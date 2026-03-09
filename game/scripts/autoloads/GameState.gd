@@ -38,8 +38,15 @@ func deduct_currency(amount: int) -> bool:
 
 # --- Private -----------------------------------------------------------------
 
+func upgrade_trailer(grid_pos: Vector2i) -> void:
+	if lots.has(grid_pos):
+		lots[grid_pos]["level"] = lots[grid_pos].get("level", 1) + 1
+
+# --- Private -----------------------------------------------------------------
+
 func _new_lot_data(type: String) -> Dictionary:
 	# All lot fields live here. Future systems add fields without touching callers.
 	return {
 		"type": type,
+		"level": 1,
 	}
