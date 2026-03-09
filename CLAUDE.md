@@ -109,7 +109,10 @@ source ~/.zshrc
 export GITHUB_APP_ID GITHUB_APP_INSTALLATION_ID GITHUB_APP_KEY_PATH
 gh auth login --with-token <<< $(bash tools/get-agent-token.sh)
 git pull origin main
+gh pr list --state open --json number,title,reviewDecision,url --jq '.[] | "#\(.number) \(.title) [\(.reviewDecision // "PENDING")] \(.url)"'
 ```
+
+After running the PR list, review any open PRs. If `reviewDecision` is `CHANGES_REQUESTED`, check comments with `gh pr view <number> --comments` and address them before starting new work.
 
 ### Every task follows this flow
 1. Run session startup commands above
