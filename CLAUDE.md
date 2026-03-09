@@ -88,8 +88,16 @@ fix/<short-description>      # bug fix
 chore/<short-description>    # non-gameplay changes (docs, config)
 ```
 
+### Session startup (run at the start of every session)
+```bash
+source ~/.zshrc
+export GITHUB_APP_ID GITHUB_APP_INSTALLATION_ID GITHUB_APP_KEY_PATH
+gh auth login --with-token <<< $(bash tools/get-agent-token.sh)
+git pull origin main
+```
+
 ### Every task follows this flow
-1. `git pull origin main` — sync before starting
+1. Run session startup commands above
 2. `git checkout -b feat/<description>` — create feature branch
 3. Do the work, commit on the branch
 4. `git push -u origin <branch>`
