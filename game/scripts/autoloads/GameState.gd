@@ -8,9 +8,9 @@ extends Node
 ## Add fields to _new_lot_data() when new systems (economy, timers) are introduced.
 
 var lots: Dictionary = {}
-
-# Milestone 2+: player currency
 var currency: int = 500
+
+signal currency_changed(new_amount: int)
 
 # --- Lot API -----------------------------------------------------------------
 
@@ -22,6 +22,19 @@ func is_lot_occupied(grid_pos: Vector2i) -> bool:
 
 func get_lot(grid_pos: Vector2i) -> Dictionary:
 	return lots.get(grid_pos, {})
+
+# --- Currency API ------------------------------------------------------------
+
+func add_currency(amount: int) -> void:
+	currency += amount
+	currency_changed.emit(currency)
+
+func deduct_currency(amount: int) -> bool:
+	if currency < amount:
+		return false
+	currency -= amount
+	currency_changed.emit(currency)
+	return true
 
 # --- Private -----------------------------------------------------------------
 
