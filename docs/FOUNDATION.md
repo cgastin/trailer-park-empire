@@ -244,8 +244,12 @@ Add:
 
 Add:
 
-- anonymous authentication
+- anonymous authentication (guest play without sign-in)
+- Sign in with Apple (required for iOS App Store)
+- Sign in with Google
+- Facebook Login
 - cloud save backup
+- account linking (upgrade anonymous session to a named account)
 
 ---
 
