@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3 uid="uid://auth_screen"]
+
+[ext_resource type="Script" path="res://scripts/ui/AuthScreen.gd" id="1"]
+
+[node name="AuthScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -280.0
+offset_right = 200.0
+offset_bottom = 280.0
+
+[node name="CloseButton" type="Button" parent="Panel"]
+layout_mode = 1
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 360.0
+offset_top = 8.0
+offset_right = 396.0
+offset_bottom = 36.0
+text = "X"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="Panel/VBox"]
+text = "Account"
+theme_override_font_sizes/font_size = 20
+
+[node name="StatusLabel" type="Label" parent="Panel/VBox"]
+name = "StatusLabel"
+autowrap_mode = 3
+text = "Create an account to back up your progress."
+
+[node name="EmailField" type="LineEdit" parent="Panel/VBox"]
+placeholder_text = "Email"
+
+[node name="PasswordField" type="LineEdit" parent="Panel/VBox"]
+placeholder_text = "Password"
+secret = true
+
+[node name="CreateButton" type="Button" parent="Panel/VBox"]
+text = "Create Account"
+
+[node name="SignInButton" type="Button" parent="Panel/VBox"]
+text = "Sign In"
+
+[node name="SeparatorLabel" type="Label" parent="Panel/VBox"]
+text = "— or —"
+horizontal_alignment = 1
+
+[node name="AppleButton" type="Button" parent="Panel/VBox"]
+text = "Sign in with Apple (Coming Soon)"
+disabled = true
+
+[node name="GoogleButton" type="Button" parent="Panel/VBox"]
+text = "Sign in with Google (Coming Soon)"
+disabled = true
+
+[node name="FacebookButton" type="Button" parent="Panel/VBox"]
+text = "Sign in with Facebook (Coming Soon)"
+disabled = true

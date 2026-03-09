@@ -4,6 +4,7 @@ const TrailerPlacerScript  := preload("res://scripts/TrailerPlacer.gd")
 const TrailerUpgraderScript := preload("res://scripts/economy/TrailerUpgrader.gd")
 const UnlockManagerScript   := preload("res://scripts/progression/UnlockManager.gd")
 const QuestManagerScript    := preload("res://scripts/progression/QuestManager.gd")
+const AuthScreenScene       := preload("res://scenes/ui/AuthScreen.tscn")
 
 @onready var lot_grid: Node2D       = $LotGrid
 @onready var status_label: Label    = $UI/StatusLabel
@@ -11,11 +12,14 @@ const QuestManagerScript    := preload("res://scripts/progression/QuestManager.g
 @onready var quest_label: Label     = $UI/QuestLabel
 @onready var save_system: Node      = $SaveSystem
 @onready var income_manager: Node   = $IncomeManager
+@onready var account_button: Button = $UI/AccountButton
 
 var trailer_placer: Node
 var trailer_upgrader: Node
 var unlock_manager: Node
 var quest_manager: Node
+
+var _local_saved_at: int = 0
 
 func _ready() -> void:
 	unlock_manager = UnlockManagerScript.new()
@@ -47,6 +51,12 @@ func _ready() -> void:
 	GameState.currency_changed.connect(_on_currency_changed)
 	_update_currency_label()
 	_update_quest_label(quest_manager.get_active_quest())
+
+	# Wire auth and cloud save — non-blocking; local game already loaded above
+	FirebaseAuth.auth_state_changed.connect(_on_auth_state_changed)
+	save_system.local_save_completed.connect(_on_local_save_completed)
+	CloudSave.download_completed.connect(_on_cloud_download_completed)
+	account_button.pressed.connect(_on_account_button_pressed)
 
 # Route clicks: locked lots are blocked, occupied go to upgrader, empty go to placer
 func _on_lot_clicked(grid_pos: Vector2i) -> void:
@@ -101,3 +111,33 @@ func _update_quest_label(quest: Dictionary) -> void:
 
 func _update_currency_label() -> void:
 	currency_label.text = "Coins: %d" % GameState.currency
+
+# --- Cloud save / auth handlers -----------------------------------------------
+
+func _on_auth_state_changed(_user_id: String, _anonymous: bool) -> void:
+	CloudSave.download()
+
+
+func _on_local_save_completed(data: Dictionary) -> void:
+	_local_saved_at = int(data.get("saved_at", 0))
+	CloudSave.upload(data)
+
+
+func _on_cloud_download_completed(data: Dictionary) -> void:
+	if data.is_empty():
+		# No cloud save — push local state up as initial backup
+		if FirebaseAuth.is_signed_in():
+			save_system.save()
+		return
+	var cloud_saved_at: int = int(data.get("saved_at", 0))
+	if cloud_saved_at > _local_saved_at:
+		save_system.apply_cloud_data(data)
+		lot_grid.queue_redraw()
+		_update_currency_label()
+		_update_quest_label(quest_manager.get_active_quest())
+		status_label.text = "Progress restored from cloud."
+
+
+func _on_account_button_pressed() -> void:
+	var auth_screen: Control = AuthScreenScene.instantiate()
+	add_child(auth_screen)

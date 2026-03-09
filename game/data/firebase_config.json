@@ -1,0 +1,7 @@
+{
+	"api_key": "REPLACE_WITH_YOUR_WEB_API_KEY",
+	"project_id": "REPLACE_WITH_YOUR_PROJECT_ID",
+	"auth_base_url": "https://identitytoolkit.googleapis.com/v1",
+	"token_base_url": "https://securetoken.googleapis.com/v1",
+	"firestore_base_url": "https://firestore.googleapis.com/v1"
+}
