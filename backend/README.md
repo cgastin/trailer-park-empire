@@ -2,6 +2,57 @@
 
 Firebase backend configuration for Trailer Park Empire.
 
+## Terraform Setup (Recommended)
+
+The `terraform/` directory provisions the entire Firebase backend from scratch — GCP project, Firebase, Firestore database, auth providers, and security rules. It also writes `game/data/firebase_config.json` with real values automatically.
+
+### Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5
+- A GCP account with billing enabled
+- `gcloud auth application-default login` (authenticates Terraform)
+
+### Usage
+
+```bash
+cd backend/terraform
+
+# 1. Copy example vars and fill in real values
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars — set project_id and billing_account
+
+# 2. Init providers
+terraform init
+
+# 3. Preview what will be created (~15 resources)
+terraform plan
+
+# 4. Apply — creates GCP project, Firebase, Firestore, writes firebase_config.json
+terraform apply
+```
+
+After `apply`, `game/data/firebase_config.json` is updated with real credentials.
+
+### What it creates
+
+| Resource | Description |
+|---|---|
+| `google_project` | GCP project |
+| `google_project_service` (×6) | Required APIs |
+| `google_firebase_project` | Firebase enabled on the project |
+| `google_firebase_web_app` | Web app registration |
+| `google_firestore_database` | Firestore (native mode) |
+| `google_identity_platform_config` | Auth: anonymous + email/password |
+| `google_firebaserules_ruleset` | Firestore security rules |
+| `google_firebaserules_release` | Deploys the ruleset |
+| `local_file` | Writes `game/data/firebase_config.json` |
+
+---
+
+## Firebase CLI (Manual / Legacy)
+
+The steps below are preserved for reference. The Terraform approach above is preferred for reproducible setup.
+
 ## Contents
 
 - `firestore.rules` — Firestore security rules. Authenticated users can only read/write their own save document.

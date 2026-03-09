@@ -1,0 +1,9 @@
+# Terraform state — contains sensitive values, never commit
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Actual tfvars contain secrets (billing account ID)
+*.tfvars
+!terraform.tfvars.example
