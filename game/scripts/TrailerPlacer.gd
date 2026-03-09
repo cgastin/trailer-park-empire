@@ -8,11 +8,11 @@ func place_trailer(grid_pos: Vector2i) -> bool:
 	var lot_grid: Node2D = get_parent().get_node("LotGrid")
 	if not _is_in_bounds(grid_pos, lot_grid):
 		return false
-	if lot_grid.is_occupied(grid_pos):
+	if GameState.is_lot_occupied(grid_pos):
 		placement_failed.emit(grid_pos)
 		return false
 
-	GameState.lots[grid_pos] = {"type": "trailer"}
+	GameState.place_trailer(grid_pos)
 	trailer_placed.emit(grid_pos)
 	return true
 

@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-**docs/FOUNDATION.md is the source of truth.** If a proposed change conflicts with it, the document wins unless the project owner explicitly overrides it.
+Read these files before making changes:
+
+- docs/FOUNDATION.md
+- docs/AI_AGENT_RULES.md
+- docs/REPOSITORY_STRUCTURE.md
+- prompts/CLAUDE_SYSTEM_PROMPT.md
+
+docs/FOUNDATION.md is the source of truth.** If a proposed change conflicts with it, the document wins unless the project owner explicitly overrides it.
 
 Trailer Park Empire is a mobile builder/simulation game (think FarmVille). The architecture is **client-heavy**: all gameplay logic runs locally on device. Firebase is only used for auth and cloud save — do not use it for gameplay.
 
@@ -69,6 +76,43 @@ Do not re-architect this without reading `docs/FOUNDATION.md` first.
 **Current target: Milestone 2** — currency + income + local save
 
 Upcoming: upgrades/quests → Firebase auth/cloud save → monetization.
+
+## Git & PR Workflow
+
+**main is protected.** Claude must never push directly to main.
+
+### Branch naming
+```
+feat/<short-description>     # new feature
+fix/<short-description>      # bug fix
+chore/<short-description>    # non-gameplay changes (docs, config)
+```
+
+### Every task follows this flow
+1. `git pull origin main` — sync before starting
+2. `git checkout -b feat/<description>` — create feature branch
+3. Do the work, commit on the branch
+4. `git push -u origin <branch>`
+5. `gh pr create` — open PR, post the URL to the user
+6. User reviews on GitHub and merges
+7. Next session starts fresh from step 1
+
+### Commit identity
+This repo uses a local git config that attributes commits to the agent:
+- `user.name = Claude Sonnet`
+- `user.email = claude-sonnet-4-6@noreply.anthropic.com`
+
+Do not change this config. The project owner (Chris Gastin) reviews and merges via GitHub — he does not commit directly to this repo.
+
+### Commit message format
+```
+<type>: <short summary>
+
+<body — what changed and why>
+
+Agent: claude-sonnet-4-6
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
 
 ## Godot CLI
 
