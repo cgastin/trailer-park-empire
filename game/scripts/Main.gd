@@ -18,5 +18,6 @@ func _on_trailer_placed(grid_pos: Vector2i) -> void:
 	lot_grid.queue_redraw()
 	status_label.text = "Trailer placed at %s" % str(grid_pos)
 
-func _on_placement_failed(_grid_pos: Vector2i) -> void:
+func _on_placement_failed(grid_pos: Vector2i) -> void:
+	lot_grid.flash_invalid(grid_pos)
 	status_label.text = "That lot is already occupied!"
