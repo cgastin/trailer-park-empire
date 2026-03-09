@@ -73,10 +73,11 @@ Do not re-architect this without reading `docs/FOUNDATION.md` first.
 **Completed:**
 - Milestone 1 — First Playable Prototype (map background, lot grid, trailer placement, placement validation)
 - Milestone 2 — Currency, income, local save
+- Milestone 3 — Upgrades, unlock rules, simple quests
 
-**Current target: Milestone 3** — upgrades, unlock rules, simple quests
+**Current target: Milestone 4** — Firebase auth + cloud save
 
-Upcoming: Firebase auth/cloud save → monetization.
+Upcoming: Monetization.
 
 ## Art & Graphics
 
@@ -132,8 +133,6 @@ Do not change this config. The project owner (Chris Gastin) reviews and merges v
 
 <body — what changed and why>
 
-Agent: claude-sonnet-4-6
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 ## Godot CLI
