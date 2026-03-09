@@ -6,9 +6,11 @@ extends Node
 const SAVE_PATH := "user://save.json"
 
 func save() -> void:
+	var unlock_manager: Node = get_parent().unlock_manager
 	var data := {
 		"currency": GameState.currency,
 		"lots": _serialize_lots(),
+		"full_grid_unlocked": unlock_manager.get_full_grid_unlocked() if unlock_manager else false,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data, "\t"))
@@ -25,6 +27,10 @@ func load_save() -> void:
 		GameState.currency = int(data["currency"])
 	if data.has("lots"):
 		_deserialize_lots(data["lots"])
+	if data.has("full_grid_unlocked"):
+		var um: Node = get_parent().unlock_manager
+		if um:
+			um.set_full_grid_unlocked(data["full_grid_unlocked"])
 
 func _serialize_lots() -> Array:
 	var result := []
