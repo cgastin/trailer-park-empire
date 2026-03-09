@@ -72,10 +72,24 @@ Do not re-architect this without reading `docs/FOUNDATION.md` first.
 
 **Completed:**
 - Milestone 1 — First Playable Prototype (map background, lot grid, trailer placement, placement validation)
+- Milestone 2 — Currency, income, local save
 
-**Current target: Milestone 2** — currency + income + local save
+**Current target: Milestone 3** — upgrades, unlock rules, simple quests
 
-Upcoming: upgrades/quests → Firebase auth/cloud save → monetization.
+Upcoming: Firebase auth/cloud save → monetization.
+
+## Art & Graphics
+
+**Do not add real sprites or art assets until Milestone 4 is complete.**
+
+Placeholder visuals (colored rectangles) are intentional. The screen layout and visual states are not stable until the core game loop is fully implemented.
+
+After Milestone 4, create `prompts/GRAPHICS_PROMPT.md` to guide art agents. It should cover:
+- Art style (pixel art, cartoon, isometric, etc.)
+- All visual states: empty lot, placed trailer, upgraded trailer, locked lot
+- UI elements needing icons or polish
+- Map background and environment
+- Color palette
 
 ## Git & PR Workflow
 

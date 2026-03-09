@@ -8,21 +8,36 @@ signal lot_clicked(grid_pos: Vector2i)
 
 const CONFIG_PATH := "res://data/grid_config.json"
 
-const GRID_COLOR         := Color(1.0, 1.0, 1.0, 0.25)
-const CELL_BG_COLOR      := Color(0.0, 0.0, 0.0, 0.08)
-const HOVER_COLOR        := Color(1.0, 1.0, 1.0, 0.30)
-const INVALID_COLOR      := Color(1.0, 0.2, 0.2, 0.50)
-const TRAILER_BODY_COLOR := Color(0.95, 0.90, 0.78, 1.0)
-const TRAILER_TRIM_COLOR := Color(0.40, 0.35, 0.25, 1.0)
-const WINDOW_COLOR       := Color(0.55, 0.78, 0.92, 1.0)
+const GRID_COLOR              := Color(1.0, 1.0, 1.0, 0.25)
+const CELL_BG_COLOR           := Color(0.0, 0.0, 0.0, 0.08)
+const HOVER_COLOR             := Color(1.0, 1.0, 1.0, 0.30)
+const UPGRADE_HOVER_COLOR     := Color(1.0, 0.85, 0.0, 0.35)
+const INVALID_COLOR           := Color(1.0, 0.2, 0.2, 0.50)
+const TRAILER_BODY_COLOR      := Color(0.95, 0.90, 0.78, 1.0)
+const TRAILER_BODY_L2_COLOR   := Color(1.0,  0.80, 0.25, 1.0)
+const TRAILER_TRIM_COLOR      := Color(0.40, 0.35, 0.25, 1.0)
+const WINDOW_COLOR            := Color(0.55, 0.78, 0.92, 1.0)
 
-const NO_LOT := Vector2i(-1, -1)
+const NO_LOT           := Vector2i(-1, -1)
+const TRAILERS_CONFIG  := "res://data/trailers.json"
 
 var _hovered_lot: Vector2i = NO_LOT
 var _flash_lot:   Vector2i = NO_LOT
+var _max_upgrade_level: int = 2
 
 func _ready() -> void:
 	_load_config()
+	_load_trailers_config()
+
+func _load_trailers_config() -> void:
+	if not FileAccess.file_exists(TRAILERS_CONFIG):
+		return
+	var file := FileAccess.open(TRAILERS_CONFIG, FileAccess.READ)
+	var json := JSON.new()
+	if json.parse(file.get_as_text()) == OK:
+		var cfg: Dictionary = json.get_data()
+		if cfg.has("trailer") and cfg["trailer"].has("max_level"):
+			_max_upgrade_level = int(cfg["trailer"]["max_level"])
 
 func _load_config() -> void:
 	if not FileAccess.file_exists(CONFIG_PATH):
@@ -83,23 +98,31 @@ func _draw_grid_lines() -> void:
 func _draw_hover() -> void:
 	if _hovered_lot == NO_LOT:
 		return
-	if GameState.is_lot_occupied(_hovered_lot):
-		return  # occupied lots show their trailer, not a hover highlight
 	var rect := _cell_rect(_hovered_lot)
-	draw_rect(rect, HOVER_COLOR)
+	if GameState.is_lot_occupied(_hovered_lot):
+		var lot := GameState.get_lot(_hovered_lot)
+		if lot.get("level", 1) < _max_upgrade_level:
+			draw_rect(rect, UPGRADE_HOVER_COLOR)  # upgradeable
+		# maxed lots: no hover
+	else:
+		draw_rect(rect, HOVER_COLOR)
 
 func _draw_placed_trailers() -> void:
 	for grid_pos in GameState.lots:
 		_draw_trailer(grid_pos)
 
 func _draw_trailer(grid_pos: Vector2i) -> void:
+	var lot := GameState.get_lot(grid_pos)
+	var level: int = lot.get("level", 1)
+
 	var x := float(grid_pos.x * cell_size)
 	var y := float(grid_pos.y * cell_size)
 	var pad := 5.0
 	var body_size := float(cell_size) - pad * 2.0
 
+	var body_color := TRAILER_BODY_L2_COLOR if level >= 2 else TRAILER_BODY_COLOR
 	var body := Rect2(x + pad, y + pad, body_size, body_size)
-	draw_rect(body, TRAILER_BODY_COLOR)
+	draw_rect(body, body_color)
 	draw_rect(body, TRAILER_TRIM_COLOR, false, 2.0)
 
 	var win_size := 10.0

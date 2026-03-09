@@ -1,6 +1,8 @@
 {
   "trailer": {
     "cost": 100,
-    "income_per_tick": 10
+    "upgrade_cost": 150,
+    "max_level": 2,
+    "income_per_tick": [10, 18]
   }
 }
