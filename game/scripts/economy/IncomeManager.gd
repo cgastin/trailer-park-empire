@@ -4,6 +4,8 @@ extends Node
 ## income_per_tick is an array indexed by level-1: [level1_rate, level2_rate, ...]
 ## Calls GameState.add_currency() — no direct UI coupling.
 
+signal income_ticked(amount: int)
+
 const TRAILERS_CONFIG := "res://data/trailers.json"
 const TICK_INTERVAL    := 5.0
 
@@ -40,3 +42,4 @@ func _on_tick() -> void:
 			total += int(rates[idx])
 	if total > 0:
 		GameState.add_currency(total)
+		income_ticked.emit(total)

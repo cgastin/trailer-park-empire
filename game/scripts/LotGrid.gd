@@ -13,6 +13,7 @@ const CELL_BG_COLOR           := Color(0.0, 0.0, 0.0, 0.08)
 const HOVER_COLOR             := Color(1.0, 1.0, 1.0, 0.30)
 const UPGRADE_HOVER_COLOR     := Color(1.0, 0.85, 0.0, 0.35)
 const INVALID_COLOR           := Color(1.0, 0.2, 0.2, 0.50)
+const LOCKED_OVERLAY_COLOR    := Color(0.0, 0.0, 0.0, 0.55)
 const TRAILER_BODY_COLOR      := Color(0.95, 0.90, 0.78, 1.0)
 const TRAILER_BODY_L2_COLOR   := Color(1.0,  0.80, 0.25, 1.0)
 const TRAILER_TRIM_COLOR      := Color(0.40, 0.35, 0.25, 1.0)
@@ -24,6 +25,10 @@ const TRAILERS_CONFIG  := "res://data/trailers.json"
 var _hovered_lot: Vector2i = NO_LOT
 var _flash_lot:   Vector2i = NO_LOT
 var _max_upgrade_level: int = 2
+var _unlock_manager: Node = null
+
+func set_unlock_manager(mgr: Node) -> void:
+	_unlock_manager = mgr
 
 func _ready() -> void:
 	_load_config()
@@ -79,6 +84,7 @@ func _draw() -> void:
 	_draw_grid_lines()
 	_draw_hover()
 	_draw_placed_trailers()
+	_draw_locked_overlays()
 	_draw_flash()
 
 func _draw_cell_backgrounds() -> void:
@@ -95,10 +101,21 @@ func _draw_grid_lines() -> void:
 		var y := row * cell_size
 		draw_line(Vector2(0, y), Vector2(grid_cols * cell_size, y), GRID_COLOR, 1.0)
 
+func _draw_locked_overlays() -> void:
+	if _unlock_manager == null:
+		return
+	for col in range(grid_cols):
+		for row in range(grid_rows):
+			var gp := Vector2i(col, row)
+			if not _unlock_manager.is_lot_unlocked(gp):
+				draw_rect(_cell_rect(gp), LOCKED_OVERLAY_COLOR)
+
 func _draw_hover() -> void:
 	if _hovered_lot == NO_LOT:
 		return
 	var rect := _cell_rect(_hovered_lot)
+	if _unlock_manager != null and not _unlock_manager.is_lot_unlocked(_hovered_lot):
+		return  # no hover on locked lots
 	if GameState.is_lot_occupied(_hovered_lot):
 		var lot := GameState.get_lot(_hovered_lot)
 		if lot.get("level", 1) < _max_upgrade_level:

@@ -1,0 +1,30 @@
+[
+	{
+		"id": "place_3",
+		"description": "Place 3 trailers",
+		"condition": "trailers_placed",
+		"threshold": 3,
+		"reward": 200
+	},
+	{
+		"id": "earn_500",
+		"description": "Earn 500 coins from income",
+		"condition": "income_earned",
+		"threshold": 500,
+		"reward": 300
+	},
+	{
+		"id": "upgrade_2",
+		"description": "Upgrade 2 trailers",
+		"condition": "trailers_upgraded",
+		"threshold": 2,
+		"reward": 500
+	},
+	{
+		"id": "place_6",
+		"description": "Place 6 trailers",
+		"condition": "trailers_placed",
+		"threshold": 6,
+		"reward": 1000
+	}
+]
