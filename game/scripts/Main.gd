@@ -2,6 +2,7 @@ extends Node2D
 
 const TrailerPlacerScript  := preload("res://scripts/TrailerPlacer.gd")
 const TrailerUpgraderScript := preload("res://scripts/economy/TrailerUpgrader.gd")
+const UnlockManagerScript   := preload("res://scripts/progression/UnlockManager.gd")
 
 @onready var lot_grid: Node2D = $LotGrid
 @onready var status_label: Label   = $UI/StatusLabel
@@ -10,8 +11,14 @@ const TrailerUpgraderScript := preload("res://scripts/economy/TrailerUpgrader.gd
 
 var trailer_placer: Node
 var trailer_upgrader: Node
+var unlock_manager: Node
 
 func _ready() -> void:
+	unlock_manager = UnlockManagerScript.new()
+	add_child(unlock_manager)
+	unlock_manager.grid_unlocked.connect(_on_grid_unlocked)
+	lot_grid.set_unlock_manager(unlock_manager)
+
 	save_system.load_save()
 
 	trailer_placer = TrailerPlacerScript.new()
@@ -29,14 +36,18 @@ func _ready() -> void:
 	GameState.currency_changed.connect(_on_currency_changed)
 	_update_currency_label()
 
-# Route clicks: occupied lots go to upgrader, empty lots go to placer
+# Route clicks: locked lots are blocked, occupied go to upgrader, empty go to placer
 func _on_lot_clicked(grid_pos: Vector2i) -> void:
+	if not unlock_manager.is_lot_unlocked(grid_pos):
+		status_label.text = "Locked! Place more trailers to unlock."
+		return
 	if GameState.is_lot_occupied(grid_pos):
 		trailer_upgrader.upgrade_trailer(grid_pos)
 	else:
 		trailer_placer.place_trailer(grid_pos)
 
 func _on_trailer_placed(grid_pos: Vector2i) -> void:
+	unlock_manager.check_unlocks()
 	lot_grid.queue_redraw()
 	save_system.save()
 	status_label.text = "Trailer placed at %s" % str(grid_pos)
@@ -54,6 +65,10 @@ func _on_insufficient_funds(_grid_pos: Vector2i) -> void:
 
 func _on_currency_changed(new_amount: int) -> void:
 	currency_label.text = "Coins: %d" % new_amount
+
+func _on_grid_unlocked() -> void:
+	lot_grid.queue_redraw()
+	status_label.text = "New area unlocked!"
 
 func _update_currency_label() -> void:
 	currency_label.text = "Coins: %d" % GameState.currency
