@@ -5,6 +5,8 @@ extends Node
 
 const SAVE_PATH := "user://save.json"
 
+var quest_manager: Node = null
+
 func save() -> void:
 	var unlock_manager: Node = get_parent().unlock_manager
 	var data := {
@@ -12,6 +14,8 @@ func save() -> void:
 		"lots": _serialize_lots(),
 		"full_grid_unlocked": unlock_manager.get_full_grid_unlocked() if unlock_manager else false,
 	}
+	if quest_manager:
+		data["quests"] = quest_manager.get_save_data()
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data, "\t"))
 
@@ -31,6 +35,8 @@ func load_save() -> void:
 		var um: Node = get_parent().unlock_manager
 		if um:
 			um.set_full_grid_unlocked(data["full_grid_unlocked"])
+	if data.has("quests") and quest_manager:
+		quest_manager.load_save_data(data["quests"])
 
 func _serialize_lots() -> Array:
 	var result := []

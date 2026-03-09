@@ -35,6 +35,13 @@ offset_right = 300.0
 offset_bottom = 40.0
 text = "Coins: 500"
 
+[node name="QuestLabel" type="Label" parent="UI"]
+offset_left = 10.0
+offset_top = 44.0
+offset_right = 500.0
+offset_bottom = 74.0
+text = "Quest: ..."
+
 [node name="StatusLabel" type="Label" parent="UI"]
 offset_left = 0.0
 offset_top = 685.0
