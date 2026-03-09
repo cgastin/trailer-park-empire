@@ -1,0 +1,8 @@
+{
+  "expand_grid": {
+    "description": "Unlock the full grid",
+    "condition": "trailers_placed",
+    "threshold": 3,
+    "unlocks": "full_grid"
+  }
+}
