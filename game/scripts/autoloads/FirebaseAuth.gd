@@ -13,6 +13,7 @@ extends Node
 const AUTH_PATH := "user://auth.json"
 
 signal auth_state_changed(user_id: String, is_anonymous: bool)
+signal needs_auth  # emitted on first launch when no stored token exists
 signal sign_in_failed(error_message: String)
 signal link_account_succeeded
 signal link_account_failed(error_message: String)
@@ -81,16 +82,21 @@ func sign_in_with_provider_token(_token: String, _provider: String) -> void:
 
 # --- Internal auth flow -------------------------------------------------------
 
+func sign_in_as_guest() -> void:
+	_sign_in_anonymously()
+
+
 func _initialize() -> void:
 	var stored := _load_auth_file()
 	if stored.is_empty():
-		_sign_in_anonymously()
+		# First launch — let the user choose (guest or account)
+		needs_auth.emit()
 		return
 	_refresh_token = stored.get("refresh_token", "")
 	user_id = stored.get("user_id", "")
 	is_anonymous = stored.get("is_anonymous", true)
 	if _refresh_token == "":
-		_sign_in_anonymously()
+		needs_auth.emit()
 	else:
 		_exchange_refresh_token()
 

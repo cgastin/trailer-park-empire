@@ -53,6 +53,7 @@ func _ready() -> void:
 	_update_quest_label(quest_manager.get_active_quest())
 
 	# Wire auth and cloud save — non-blocking; local game already loaded above
+	FirebaseAuth.needs_auth.connect(_show_auth_screen)
 	FirebaseAuth.auth_state_changed.connect(_on_auth_state_changed)
 	save_system.local_save_completed.connect(_on_local_save_completed)
 	CloudSave.download_completed.connect(_on_cloud_download_completed)
@@ -138,6 +139,12 @@ func _on_cloud_download_completed(data: Dictionary) -> void:
 		status_label.text = "Progress restored from cloud."
 
 
+func _show_auth_screen(optional: bool = false) -> void:
+	# Controls must live inside a CanvasLayer to render in screen space.
+	var auth_screen = AuthScreenScene.instantiate()
+	auth_screen.show_close_button = optional
+	$UI.add_child(auth_screen)
+
+
 func _on_account_button_pressed() -> void:
-	var auth_screen: Control = AuthScreenScene.instantiate()
-	add_child(auth_screen)
+	_show_auth_screen(true)
