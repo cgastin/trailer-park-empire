@@ -153,13 +153,10 @@ func _draw_cell_ground(col: int, row: int) -> void:
 	var hw := float(tile_width) / 2.0
 	var hh := float(tile_height) / 2.0
 
-	# Occupied cells: the trailer sprite includes its own grass tile — skip lot_empty
-	# to avoid a double-grass seam with mismatched colors.
-	if not GameState.is_lot_occupied(gp):
-		if _tex_lot_empty:
-			_draw_lot_tile(c, hw, hh)
-		else:
-			draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
+	if _tex_lot_empty:
+		_draw_lot_tile(c, hw, hh)
+	else:
+		draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
 
 	# Grid outline on the diamond top face only
 	var diamond := _cell_diamond(col, row)
