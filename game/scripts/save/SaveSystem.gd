@@ -2,8 +2,12 @@ extends Node
 
 ## Saves and loads GameState to/from user://save.json.
 ## Call save() after any state change. Call load_save() on startup.
+## Emits local_save_completed(data) after every successful local write so
+## Main.gd can trigger a cloud upload without SaveSystem knowing about Firebase.
 
 const SAVE_PATH := "user://save.json"
+
+signal local_save_completed(data: Dictionary)
 
 var quest_manager: Node = null
 
@@ -13,11 +17,13 @@ func save() -> void:
 		"currency": GameState.currency,
 		"lots": _serialize_lots(),
 		"full_grid_unlocked": unlock_manager.get_full_grid_unlocked() if unlock_manager else false,
+		"saved_at": int(Time.get_unix_time_from_system()),
 	}
 	if quest_manager:
 		data["quests"] = quest_manager.get_save_data()
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data, "\t"))
+	local_save_completed.emit(data)
 
 func load_save() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -37,6 +43,21 @@ func load_save() -> void:
 			um.set_full_grid_unlocked(data["full_grid_unlocked"])
 	if data.has("quests") and quest_manager:
 		quest_manager.load_save_data(data["quests"])
+
+func apply_cloud_data(data: Dictionary) -> void:
+	## Applies a downloaded cloud save dictionary to GameState and saves locally.
+	## Called by Main.gd when the cloud save is newer than local.
+	if data.has("currency"):
+		GameState.currency = int(data["currency"])
+	if data.has("lots"):
+		_deserialize_lots(data["lots"])
+	var um: Node = get_parent().unlock_manager if get_parent() else null
+	if data.has("full_grid_unlocked") and um:
+		um.set_full_grid_unlocked(data["full_grid_unlocked"])
+	if data.has("quests") and quest_manager:
+		quest_manager.load_save_data(data["quests"])
+	save()
+
 
 func _serialize_lots() -> Array:
 	var result := []

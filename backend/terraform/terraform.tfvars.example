@@ -1,0 +1,5 @@
+project_id      = "tpe-prod-abc123"      # must be globally unique
+project_name    = "Trailer Park Empire"
+billing_account = "XXXXXX-XXXXXX-XXXXXX" # GCP Console → Billing
+org_id          = ""                     # leave empty for personal GCP accounts
+region          = "us-central1"           # single-region; use nam5 for multi-region US

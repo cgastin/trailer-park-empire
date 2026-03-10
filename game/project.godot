@@ -17,6 +17,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*res://scripts/autoloads/GameState.gd"
+FirebaseAuth="*res://scripts/autoloads/FirebaseAuth.gd"
+CloudSave="*res://scripts/autoloads/CloudSave.gd"
 
 [display]
 
