@@ -19,10 +19,12 @@ terraform {
   # off local disk. Migrate from local state with:
   #   terraform init -migrate-state
   # The bucket is created by google_storage_bucket.tf_state below on first apply.
-  backend "gcs" {
-    bucket = "tpe-terraform-state"
-    prefix = "terraform/state"
-  }
+  # Uncomment after running: terraform apply -target=google_storage_bucket.tf_state
+  # then run: terraform init -migrate-state
+  # backend "gcs" {
+  #   bucket = "<your-project-id>-tf-state"
+  #   prefix = "terraform/state"
+  # }
 }
 
 provider "google" {
@@ -147,7 +149,7 @@ resource "local_file" "firebase_config" {
 resource "google_storage_bucket" "tf_state" {
   provider                    = google-beta
   project                     = google_project.tpe.project_id
-  name                        = "tpe-terraform-state"
+  name                        = "${var.project_id}-tf-state"
   location                    = "US"
   uniform_bucket_level_access = true
   force_destroy               = false

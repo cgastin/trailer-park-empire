@@ -129,107 +129,53 @@ The repository structure should remain consistent.
 /game
 ```
 
-The `/game` directory contains the actual Godot project.
+tes
+The Godot project lives in `/game`.
 
-Documentation should always live inside `/docs`.
+Documentation lives in `/docs`.
 
-AI prompts should live inside `/prompts`.
+AI prompts live in `/prompts`.
 
----
-
-# Development Milestones
-
-The project will be developed in small milestones.
-
-## Milestone 1 — First Playable Prototype
-
-Goal:
-
-Allow the player to place a trailer on a lot.
-
-Required features:
-
-- map background
-- lot grid
-- trailer placement
-- placement validation
-
-No backend required.
+Do not move files outside this structure without explanation.
 
 ---
 
-## Milestone 2 — Basic Game Loop
+# Testing Philosophy
 
-Add:
+Core game logic should be testable.
 
-- simple currency
-- income generation
-- basic UI
-- local save system
+Focus testing on:
 
----
+- placement logic
+- economy calculations
+- timers
+- save/load systems
 
-## Milestone 3 — Progression
-
-Add:
-
-- upgrades
-- unlock rules
-- simple quests
+Do not write tests for visual layout or UI appearance.
 
 ---
 
-## Milestone 4 — Cloud Identity
+# Expected Behavior
 
-Add:
+When responding to development requests:
 
-- anonymous authentication
-- cloud save backup
+- follow the architecture in FOUNDATION.md
+- propose simple solutions first
+- keep code readable
+- avoid unnecessary complexity
 
----
-
-## Milestone 5 — Monetization
-
-Add:
-
-- premium currency
-- purchase validation
-- starter pack
+If a requested feature violates project principles, explain why and propose an alternative.
 
 ---
 
-# Development Workflow
+# Ultimate Goal
 
-AI agents should:
+The purpose of this project is to demonstrate that a **commercial mobile game can be built primarily using AI coding agents**.
 
-1. Read this document before making architectural changes
-2. Follow the technology stack
-3. Avoid unnecessary complexity
-4. Keep systems modular
+Success means:
 
-Human oversight acts as:
+- the game is playable
+- the codebase remains understandable
+- the project can ship
 
-- creative director
-- architecture reviewer
-- final decision maker
-
----
-
-# Guiding Philosophy
-
-The goal is not to build the most complex architecture.
-
-The goal is to **ship a real playable commercial game built primarily by AI agents**.
-
-Priorities:
-
-1. Playable
-2. Simple
-3. Maintainable
-4. Expandable
-
-Perfect architecture is less important than **finishing the game**.
-
----
-
-# End of Document
+Always optimize for **shipping a playable game**, not theoretical perfection.
