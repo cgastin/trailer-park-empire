@@ -14,6 +14,15 @@ terraform {
       version = "~> 2.0"
     }
   }
+
+  # Remote state — keeps terraform.tfstate (which contains the SCRYPT signer key)
+  # off local disk. Migrate from local state with:
+  #   terraform init -migrate-state
+  # The bucket is created by google_storage_bucket.tf_state below on first apply.
+  backend "gcs" {
+    bucket = "tpe-terraform-state"
+    prefix = "terraform/state"
+  }
 }
 
 provider "google" {
@@ -120,4 +129,32 @@ resource "local_file" "firebase_config" {
     token_base_url     = "https://securetoken.googleapis.com/v1"
     firestore_base_url = "https://firestore.googleapis.com/v1"
   })
+}
+
+# ---------------------------------------------------------------------------
+# Terraform Remote State Bucket
+# Stores terraform.tfstate in GCS instead of local disk.
+# The bucket name must match the backend "gcs" block above.
+#
+# IMPORTANT: Bootstrap order —
+#   1. Comment out the backend "gcs" block above and run `terraform apply`
+#      to create this bucket with local state.
+#   2. Uncomment the backend "gcs" block and run `terraform init -migrate-state`
+#      to move state into the bucket.
+#   3. Delete the local terraform.tfstate file.
+# ---------------------------------------------------------------------------
+
+resource "google_storage_bucket" "tf_state" {
+  provider                    = google-beta
+  project                     = google_project.tpe.project_id
+  name                        = "tpe-terraform-state"
+  location                    = "US"
+  uniform_bucket_level_access = true
+  force_destroy               = false
+
+  versioning {
+    enabled = true
+  }
+
+  depends_on = [google_project_service.apis]
 }

@@ -1,9 +1,13 @@
-# Terraform state — contains sensitive values, never commit
+# Terraform state — contains sensitive values (SCRYPT signer key), never commit
 *.tfstate
 *.tfstate.backup
 .terraform/
-.terraform.lock.hcl
+tfplan
 
 # Actual tfvars contain secrets (billing account ID)
 *.tfvars
 !terraform.tfvars.example
+
+# .terraform.lock.hcl should be committed for reproducible provider versions
+# (it contains no secrets — remove this line if you want to commit it)
+.terraform.lock.hcl

@@ -1,0 +1,17 @@
+# Firebase config — contains real API key written by Terraform; never commit
+game/data/firebase_config.json
+
+# Godot
+.godot/
+*.import
+export_presets.cfg
+*.translation
+
+# Terraform (root-level safety net; detailed rules in backend/terraform/.gitignore)
+**/**dev.tfvars
+tfplan
+terraform/*
+
+# OS
+.DS_Store
+Thumbs.db
