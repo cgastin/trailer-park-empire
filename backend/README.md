@@ -21,15 +21,23 @@ cd backend/terraform
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars — set project_id and billing_account
 
-# 2. Init providers
+# 2. Bootstrap (run ONCE on a brand-new GCP project)
+#    Enables the two APIs Terraform needs before it can enable anything else.
+./bootstrap.sh YOUR_PROJECT_ID
+
+# 3. Init providers
 terraform init
 
-# 3. Preview what will be created (~15 resources)
+# 4. Preview what will be created (~15 resources)
 terraform plan
 
-# 4. Apply — creates GCP project, Firebase, Firestore, writes firebase_config.json
+# 5. Apply — creates Firebase, Firestore, auth, writes firebase_config.json
 terraform apply
 ```
+
+> **Why the bootstrap step?** On a brand-new GCP project, `serviceusage.googleapis.com`
+> is not enabled. Terraform uses that API to enable all other APIs, creating a
+> catch-22. The bootstrap script breaks the cycle with a one-time `gcloud` call.
 
 After `apply`, `game/data/firebase_config.json` is updated with real credentials.
 
