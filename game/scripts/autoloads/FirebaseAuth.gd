@@ -47,13 +47,12 @@ func sign_in_with_email(email: String, password: String) -> void:
 
 
 func sign_up_with_email(email: String, password: String) -> void:
-	## Creates a new account OR links an existing anonymous account to email.
-	if is_signed_in() and is_anonymous:
-		_link_anonymous_to_email(email, password)
-	else:
-		var body := {"email": email, "password": password, "returnSecureToken": true}
-		_post(_auth_base_url + "/accounts:signUp?key=" + _api_key, body,
-			_on_email_sign_up_completed)
+	## Creates a new email/password account. Always uses signUp (no anonymous linking)
+	## because Identity Platform blocks accounts:update before email verification.
+	## Local save data is preserved on device and uploads to the new account after sign-up.
+	var body := {"email": email, "password": password, "returnSecureToken": true}
+	_post(_auth_base_url + "/accounts:signUp?key=" + _api_key, body,
+		_on_email_sign_up_completed)
 
 
 func sign_in_with_apple() -> void:
