@@ -6,13 +6,14 @@ const UnlockManagerScript   := preload("res://scripts/progression/UnlockManager.
 const QuestManagerScript    := preload("res://scripts/progression/QuestManager.gd")
 const AuthScreenScene       := preload("res://scenes/ui/AuthScreen.tscn")
 
-@onready var lot_grid: Node2D       = $LotGrid
-@onready var status_label: Label    = $UI/StatusLabel
-@onready var currency_label: Label  = $UI/CurrencyLabel
-@onready var quest_label: Label     = $UI/QuestLabel
-@onready var save_system: Node      = $SaveSystem
-@onready var income_manager: Node   = $IncomeManager
-@onready var account_button: Button = $UI/AccountButton
+@onready var lot_grid: Node2D         = $LotGrid
+@onready var status_label: Label      = $UI/StatusLabel
+@onready var currency_label: Label    = $UI/CurrencyLabel
+@onready var quest_label: Label       = $UI/QuestLabel
+@onready var save_system: Node        = $SaveSystem
+@onready var income_manager: Node     = $IncomeManager
+@onready var account_button: Button   = $UI/AccountButton
+@onready var park_background: Sprite2D = $ParkBackground
 
 var trailer_placer: Node
 var trailer_upgrader: Node
@@ -22,6 +23,7 @@ var quest_manager: Node
 var _local_saved_at: int = 0
 
 func _ready() -> void:
+	_load_background()
 	unlock_manager = UnlockManagerScript.new()
 	add_child(unlock_manager)
 	unlock_manager.grid_unlocked.connect(_on_grid_unlocked)
@@ -148,3 +150,10 @@ func _show_auth_screen(optional: bool = false) -> void:
 
 func _on_account_button_pressed() -> void:
 	_show_auth_screen(true)
+
+
+func _load_background() -> void:
+	var img := Image.load_from_file("res://assets/sprites/bg_park.png")
+	if img == null:
+		return
+	park_background.texture = ImageTexture.create_from_image(img)
