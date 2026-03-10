@@ -4,11 +4,14 @@ signal lot_clicked(grid_pos: Vector2i)
 
 @export var grid_cols: int = 10
 @export var grid_rows: int = 8
-@export var cell_size: int = 64
+@export var tile_width: int = 128
+@export var tile_height: int = 64
+@export var origin_x: int = 640
+@export var origin_y: int = 90
 
 const CONFIG_PATH := "res://data/grid_config.json"
 
-const GRID_COLOR           := Color(0.2, 0.15, 0.08, 0.4)
+const GRID_COLOR           := Color(0.2, 0.15, 0.08, 0.35)
 const HOVER_COLOR          := Color(1.0, 1.0, 1.0, 0.30)
 const UPGRADE_HOVER_COLOR  := Color(1.0, 0.85, 0.0, 0.35)
 const INVALID_COLOR        := Color(1.0, 0.2, 0.2, 0.50)
@@ -33,7 +36,7 @@ func set_unlock_manager(mgr: Node) -> void:
 
 
 func _ready() -> void:
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_load_config()
 	_load_trailers_config()
 	_load_textures()
@@ -64,19 +67,42 @@ func _load_config() -> void:
 	var json := JSON.new()
 	if json.parse(file.get_as_text()) == OK:
 		var cfg: Dictionary = json.get_data()
-		if cfg.has("grid_cols"):
-			grid_cols = cfg["grid_cols"]
-		if cfg.has("grid_rows"):
-			grid_rows = cfg["grid_rows"]
-		if cfg.has("cell_size"):
-			cell_size = cfg["cell_size"]
+		if cfg.has("grid_cols"):   grid_cols   = cfg["grid_cols"]
+		if cfg.has("grid_rows"):   grid_rows   = cfg["grid_rows"]
+		if cfg.has("tile_width"):  tile_width  = cfg["tile_width"]
+		if cfg.has("tile_height"): tile_height = cfg["tile_height"]
+		if cfg.has("origin_x"):    origin_x    = cfg["origin_x"]
+		if cfg.has("origin_y"):    origin_y    = cfg["origin_y"]
+
+
+# --- Coordinate helpers -------------------------------------------------------
+
+func grid_to_screen(col: int, row: int) -> Vector2:
+	var hw := tile_width / 2   # 64
+	var hh := tile_height / 2  # 32
+	return Vector2(
+		origin_x + (col - row) * hw,
+		origin_y + (col + row) * hh
+	)
 
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
-	return Vector2i(
-		int(world_pos.x) / cell_size,
-		int(world_pos.y) / cell_size
-	)
+	var lx := world_pos.x - origin_x
+	var ly := world_pos.y - origin_y
+	var hw := float(tile_width) / 2.0   # 64
+	var hh := float(tile_height) / 2.0  # 32
+	var col := int(floor((lx / hw + ly / hh) / 2.0))
+	var row := int(floor((ly / hh - lx / hw) / 2.0))
+	return Vector2i(col, row)
+
+
+func _is_valid_hit(world_pos: Vector2, col: int, row: int) -> bool:
+	var center := grid_to_screen(col, row)
+	var hw: float = float(tile_width) / 2.0
+	var hh: float = float(tile_height) / 2.0
+	var dx: float = abs(world_pos.x - center.x) / hw
+	var dy: float = abs(world_pos.y - center.y) / hh
+	return (dx + dy) <= 1.0
 
 
 func is_occupied(grid_pos: Vector2i) -> bool:
@@ -95,120 +121,205 @@ func _clear_flash() -> void:
 	queue_redraw()
 
 
+# --- Diamond shape helper -----------------------------------------------------
+
+func _cell_diamond(col: int, row: int) -> PackedVector2Array:
+	var c := grid_to_screen(col, row)
+	var hw := float(tile_width) / 2.0
+	var hh := float(tile_height) / 2.0
+	return PackedVector2Array([
+		Vector2(c.x,       c.y - hh),  # north
+		Vector2(c.x + hw,  c.y),       # east
+		Vector2(c.x,       c.y + hh),  # south
+		Vector2(c.x - hw,  c.y),       # west
+	])
+
+
 # --- Draw --------------------------------------------------------------------
 
 func _draw() -> void:
-	_draw_cell_backgrounds()
-	_draw_grid_lines()
-	_draw_placed_trailers()
-	_draw_locked_overlays()
-	_draw_hover()
-	_draw_flash()
+	# Painter's algorithm: back rows first so front rows render on top
+	for row in range(grid_rows):
+		for col in range(grid_cols):
+			_draw_cell_ground(col, row)
+	for row in range(grid_rows):
+		for col in range(grid_cols):
+			_draw_cell_contents(col, row)
 
 
-func _draw_cell_backgrounds() -> void:
-	for col in range(grid_cols):
-		for row in range(grid_rows):
-			var rect := Rect2(col * cell_size, row * cell_size, cell_size, cell_size)
-			if _tex_lot_empty:
-				draw_texture_rect(_tex_lot_empty, rect, false)
-			else:
-				draw_rect(rect, Color(0.6, 0.5, 0.35, 1.0))
+func _draw_cell_ground(col: int, row: int) -> void:
+	var gp := Vector2i(col, row)
+	var c := grid_to_screen(col, row)
+	var hw := float(tile_width) / 2.0
+	var hh := float(tile_height) / 2.0
+
+	# Occupied cells: the trailer sprite includes its own grass tile — skip lot_empty
+	# to avoid a double-grass seam with mismatched colors.
+	if not GameState.is_lot_occupied(gp):
+		if _tex_lot_empty:
+			_draw_lot_tile(c, hw, hh)
+		else:
+			draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
+
+	# Grid outline on the diamond top face only
+	var diamond := _cell_diamond(col, row)
+	draw_polyline(
+		PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]),
+		GRID_COLOR, 1.0
+	)
 
 
-func _draw_grid_lines() -> void:
-	for col in range(grid_cols + 1):
-		var x := col * cell_size
-		draw_line(Vector2(x, 0), Vector2(x, grid_rows * cell_size), GRID_COLOR, 1.0)
-	for row in range(grid_rows + 1):
-		var y := row * cell_size
-		draw_line(Vector2(0, y), Vector2(grid_cols * cell_size, y), GRID_COLOR, 1.0)
+# Draw lot_empty clipped to the exact isometric tile shape using UV-mapped polygons.
+# This prevents any rectangular canvas bleed-through regardless of image quality.
+#
+# Texture layout (128×96):
+#   Top diamond:  north=(0.5,0)  east=(1,0.333)  south=(0.5,0.667)  west=(0,0.333)
+#   Front face:   top-center=(0.5,0.667)  top-right=(1,0.667)
+#                 bot-center=(0.5,1)      bot-left=(0,1)
+func _draw_lot_tile(c: Vector2, hw: float, hh: float) -> void:
+	var white := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
+
+	# Top diamond face
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(c.x,       c.y - hh),  # north
+			Vector2(c.x + hw,  c.y),        # east
+			Vector2(c.x,       c.y + hh),   # south
+			Vector2(c.x - hw,  c.y),        # west
+		]),
+		white,
+		PackedVector2Array([
+			Vector2(0.5,   0.0),    # north
+			Vector2(1.0,   0.333),  # east
+			Vector2(0.5,   0.667),  # south
+			Vector2(0.0,   0.333),  # west
+		]),
+		_tex_lot_empty
+	)
+
+	# Front face — parallelogram below south vertex
+	# Left triangle:  south, bot-left,   bot-center
+	# Right triangle: south, bot-center, top-right  (together = one convex quad)
+	var face_h := hh
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(c.x,       c.y + hh),             # top-center  (south vertex)
+			Vector2(c.x + hw,  c.y + hh),             # top-right
+			Vector2(c.x,       c.y + hh + face_h),    # bot-center
+			Vector2(c.x - hw,  c.y + hh + face_h),    # bot-left
+		]),
+		white,
+		PackedVector2Array([
+			Vector2(0.5,  0.667),  # top-center
+			Vector2(1.0,  0.667),  # top-right
+			Vector2(0.5,  1.0),    # bot-center
+			Vector2(0.0,  1.0),    # bot-left
+		]),
+		_tex_lot_empty
+	)
 
 
-func _draw_locked_overlays() -> void:
-	if _unlock_manager == null:
+func _draw_cell_contents(col: int, row: int) -> void:
+	var gp := Vector2i(col, row)
+
+	# Locked overlay
+	if _unlock_manager != null and not _unlock_manager.is_lot_unlocked(gp):
+		var diamond := _cell_diamond(col, row)
+		draw_colored_polygon(diamond, LOCKED_OVERLAY_COLOR)
+		if _tex_lock:
+			var c := grid_to_screen(col, row)
+			var lock_size := 32.0
+			draw_texture_rect(_tex_lock,
+				Rect2(c.x - lock_size / 2.0, c.y - lock_size / 2.0, lock_size, lock_size),
+				false)
 		return
-	for col in range(grid_cols):
-		for row in range(grid_rows):
-			var gp := Vector2i(col, row)
-			if not _unlock_manager.is_lot_unlocked(gp):
-				draw_rect(_cell_rect(gp), LOCKED_OVERLAY_COLOR)
-				if _tex_lock:
-					var lock_size := 24.0
-					var cx := float(col * cell_size) + (cell_size - lock_size) / 2.0
-					var cy := float(row * cell_size) + (cell_size - lock_size) / 2.0
-					draw_texture_rect(_tex_lock, Rect2(cx, cy, lock_size, lock_size), false)
+
+	# Placed trailer
+	if GameState.is_lot_occupied(gp):
+		_draw_trailer(col, row)
+
+	# Hover overlay
+	if gp == _hovered_lot:
+		var diamond := _cell_diamond(col, row)
+		if GameState.is_lot_occupied(gp):
+			var lot := GameState.get_lot(gp)
+			if lot.get("level", 1) < _max_upgrade_level:
+				draw_colored_polygon(diamond, UPGRADE_HOVER_COLOR)
+		else:
+			draw_colored_polygon(diamond, HOVER_COLOR)
+
+	# Flash overlay
+	if gp == _flash_lot:
+		draw_colored_polygon(_cell_diamond(col, row), INVALID_COLOR)
 
 
-func _draw_hover() -> void:
-	if _hovered_lot == NO_LOT:
-		return
-	var rect := _cell_rect(_hovered_lot)
-	if _unlock_manager != null and not _unlock_manager.is_lot_unlocked(_hovered_lot):
-		return  # no hover on locked lots
-	if GameState.is_lot_occupied(_hovered_lot):
-		var lot := GameState.get_lot(_hovered_lot)
-		if lot.get("level", 1) < _max_upgrade_level:
-			draw_rect(rect, UPGRADE_HOVER_COLOR)  # upgradeable
-		# maxed lots: no hover
-	else:
-		draw_rect(rect, HOVER_COLOR)
-
-
-func _draw_placed_trailers() -> void:
-	for grid_pos in GameState.lots:
-		_draw_trailer(grid_pos)
-
-
-func _draw_trailer(grid_pos: Vector2i) -> void:
-	var lot := GameState.get_lot(grid_pos)
+func _draw_trailer(col: int, row: int) -> void:
+	var gp := Vector2i(col, row)
+	var lot := GameState.get_lot(gp)
 	var level: int = lot.get("level", 1)
-
-	var pad := 5.0
-	var x := float(grid_pos.x * cell_size) + pad
-	var y := float(grid_pos.y * cell_size) + pad
-	var size := float(cell_size) - pad * 2.0
-
 	var tex := _tex_trailer_l2 if level >= 2 else _tex_trailer_l1
-	if tex:
-		draw_texture_rect(tex, Rect2(x, y, size, size), false)
-
-
-func _draw_flash() -> void:
-	if _flash_lot == NO_LOT:
+	if tex == null:
 		return
-	draw_rect(_cell_rect(_flash_lot), INVALID_COLOR)
+
+	# South-anchor: sprite sits on the south vertex of the diamond
+	var c := grid_to_screen(col, row)
+	var sprite_w := float(tile_width)
+	var sprite_h := float(tex.get_height()) * (float(tile_width) / float(tex.get_width()))
+	var rect := Rect2(c.x - sprite_w / 2.0, c.y + tile_height / 2.0 - sprite_h, sprite_w, sprite_h)
+	draw_texture_rect(tex, rect, false)
 
 
 # --- Input -------------------------------------------------------------------
+
+func _get_trailer_tex(col: int, row: int) -> Texture2D:
+	var lot := GameState.get_lot(Vector2i(col, row))
+	var level: int = lot.get("level", 1)
+	return _tex_trailer_l2 if level >= 2 else _tex_trailer_l1
+
+
+func _is_trailer_rect_hit(world_pos: Vector2, col: int, row: int) -> bool:
+	var tex := _get_trailer_tex(col, row)
+	if tex == null:
+		return false
+	var c := grid_to_screen(col, row)
+	var sprite_h := float(tex.get_height()) * (float(tile_width) / float(tex.get_width()))
+	var rect := Rect2(
+		c.x - float(tile_width) / 2.0,
+		c.y + float(tile_height) / 2.0 - sprite_h,
+		float(tile_width),
+		sprite_h
+	)
+	return rect.has_point(world_pos)
+
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_update_hover()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var grid_pos := world_to_grid(get_local_mouse_position())
+		var mouse_local := get_local_mouse_position()
+		var grid_pos := world_to_grid(mouse_local)
 		if _is_in_grid(grid_pos):
-			lot_clicked.emit(grid_pos)
+			var occupied := GameState.is_lot_occupied(grid_pos)
+			var hit := _is_valid_hit(mouse_local, grid_pos.x, grid_pos.y) \
+					or (occupied and _is_trailer_rect_hit(mouse_local, grid_pos.x, grid_pos.y))
+			if hit:
+				lot_clicked.emit(grid_pos)
 
 
 func _update_hover() -> void:
-	var grid_pos := world_to_grid(get_local_mouse_position())
-	var new_hover := grid_pos if _is_in_grid(grid_pos) else NO_LOT
+	var mouse_local := get_local_mouse_position()
+	var grid_pos := world_to_grid(mouse_local)
+	var new_hover: Vector2i
+	if _is_in_grid(grid_pos) and _is_valid_hit(mouse_local, grid_pos.x, grid_pos.y):
+		new_hover = grid_pos
+	else:
+		new_hover = NO_LOT
 	if new_hover != _hovered_lot:
 		_hovered_lot = new_hover
 		queue_redraw()
 
 
 # --- Helpers -----------------------------------------------------------------
-
-func _cell_rect(grid_pos: Vector2i) -> Rect2:
-	return Rect2(
-		grid_pos.x * cell_size + 1,
-		grid_pos.y * cell_size + 1,
-		cell_size - 2,
-		cell_size - 2
-	)
-
 
 func _is_in_grid(grid_pos: Vector2i) -> bool:
 	return (

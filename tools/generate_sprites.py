@@ -1,804 +1,459 @@
 #!/usr/bin/env python3
 """
-Trailer Park Empire — Pixel Art Sprite Generator
-Generates all game sprites using Pillow (no anti-aliasing, hard pixel edges).
+Trailer Park Empire — Isometric Sprite Generator
+Cartoon pixel-art style (Stardew Valley / SimCity mobile aesthetic).
+
+Canvas sizes:
+  lot_empty.png   128×96  — drawn at Rect2(c.x-64, c.y-32, 128, 96)
+                             diamond: top=(64,0) left=(0,32) right=(128,32) south=(64,64)
+                             front face: y=64-96
+
+  trailer_l*.png  128×96  — drawn at Rect2(c.x-64, c.y-64, 128, 96)
+                             diamond: top=(64,32) left=(0,64) right=(128,64) south=(64,96)
+                             box body: y=0-64
+
+  icon_lock.png   32×32
 """
 
 from PIL import Image, ImageDraw
 import os
-import math
 import random
 
-SPRITES_DIR = "/Users/chrisgastin/dev/trailer-park-empire/game/assets/sprites"
-UI_DIR = "/Users/chrisgastin/dev/trailer-park-empire/game/assets/ui"
+SPRITES_DIR = os.path.join(os.path.dirname(__file__), "../game/assets/sprites")
+UI_DIR      = os.path.join(os.path.dirname(__file__), "../game/assets/ui")
 
-# Palette
-DIRT         = (196, 168, 130, 255)   # #C4A882
-DIRT_DARK    = (170, 140, 100, 255)   # cracked earth lines
-DIRT_LIGHT   = (215, 190, 155, 255)   # lighter dirt patches
-DRY_GRASS    = (139, 173, 106, 255)   # #8BAD6A
-DRY_GRASS_DK = (100, 130, 70, 255)    # darker grass
-TRAILER_CREAM = (242, 230, 197, 255)  # #F2E6C5
-TRAILER_GOLD  = (255, 204, 64, 255)   # #FFCC40
-TRAILER_GOLD_DK = (220, 165, 30, 255) # shading
-TRAILER_TRIM  = (102, 90, 63, 255)    # #665A3F
-WINDOW_BLUE   = (141, 200, 235, 255)  # #8DC8EB
-WINDOW_DK     = (80, 140, 180, 255)   # window shadow
-OUTLINE       = (40, 28, 15, 255)     # near-black outline
-WHITE         = (255, 255, 255, 255)
-BLACK         = (0, 0, 0, 255)
-TRANSPARENT   = (0, 0, 0, 0)
-COIN_YELLOW   = (255, 215, 0, 255)    # #FFD700
-COIN_ORANGE   = (220, 170, 0, 255)    # coin shading
-COIN_LIGHT    = (255, 240, 140, 255)  # coin highlight
-UI_TAN        = (212, 184, 150, 255)  # #D4B896
-UI_DARK       = (61, 43, 26, 255)     # #3D2B1A
-LOCK_GRAY     = (80, 80, 90, 255)
-LOCK_GOLD     = (200, 165, 30, 255)
-CREAM_SHADOW  = (210, 195, 158, 255)  # shadow on cream trailer
-CREAM_LIGHT   = (252, 246, 225, 255)  # highlight on cream trailer
-RED_RUST      = (160, 80, 50, 255)    # rust/weathering
-SKIRTING      = (130, 115, 80, 255)   # skirting at base
-AWNING_RED    = (180, 60, 40, 255)    # door awning
-AWNING_RED_DK = (130, 40, 20, 255)
-FLOWER_RED    = (200, 60, 60, 255)
-FLOWER_PINK   = (230, 130, 130, 255)
-FLOWER_GREEN  = (80, 130, 60, 255)
-ANTENNA       = (120, 110, 95, 255)
-PEBBLE_DARK   = (140, 118, 90, 255)
-PEBBLE_LIGHT  = (220, 200, 168, 255)
-FENCE_WOOD    = (160, 130, 90, 255)
-FENCE_DK      = (110, 85, 55, 255)
-GRASS_BG      = (110, 150, 80, 255)
-GRASS_BG_DK   = (80, 115, 55, 255)
-WATER_TOWER_GRAY = (140, 135, 128, 255)
-WATER_TOWER_DK   = (100, 95, 88, 255)
-SKY_NONE      = (0, 0, 0, 0)  # transparent
-METAL_GRAY    = (150, 150, 160, 255)
-CHAINLINK     = (170, 180, 175, 255)
+# ── Palette ───────────────────────────────────────────────────────────────────
+TRANSPARENT   = (0,   0,   0,   0)
+OUTLINE       = (20,  15,  8,   255)
 
+# Grass / ground (shared across all sprites)
+GRASS_LT      = (120, 185, 80,  255)
+GRASS_MID     = (95,  158, 60,  255)
+GRASS_DK      = (65,  120, 42,  255)
+GROUND_FL     = (78,  115, 48,  255)   # front-face of tile
+GROUND_FL_DK  = (55,  88,  32,  255)
 
-def px(draw, x, y, color):
-    """Draw a single pixel."""
-    draw.point((x, y), fill=color)
+# L1 trailer — beat-up single-wide
+L1_ROOF       = (139, 115, 85,  255)   # #8B7355 dull gray-brown
+L1_ROOF_LT    = (162, 138, 105, 255)
+L1_SIDE       = (196, 163, 90,  255)   # #C4A35A tan/rust left face
+L1_SIDE_DK    = (172, 140, 72,  255)
+L1_FRONT      = (184, 149, 90,  255)   # #B8955A slightly darker right face
+L1_FRONT_DK   = (158, 125, 68,  255)
+L1_SKIRT      = (74,  92,  42,  255)   # #4A5C2A dark green-brown skirting
 
+# L2 trailer — clean double-wide
+L2_ROOF       = (232, 232, 232, 255)   # #E8E8E8 white-gray
+L2_ROOF_LT    = (248, 248, 248, 255)
+L2_SIDE       = (245, 240, 224, 255)   # #F5F0E0 white/cream
+L2_SIDE_DK    = (215, 208, 185, 255)
+L2_FRONT      = (238, 232, 215, 255)
+L2_FRONT_DK   = (208, 200, 178, 255)
+L2_SKIRT      = (180, 175, 160, 255)
+L2_AWNING     = (192, 57,  43,  255)   # #C0392B red awning
+L2_AWNING_DK  = (140, 38,  28,  255)
 
-def rect(draw, x1, y1, x2, y2, color):
-    """Draw a filled rectangle (inclusive)."""
-    draw.rectangle([x1, y1, x2, y2], fill=color)
+# Shared details
+WINDOW_FRAME  = (40,  30,  15,  255)
+WINDOW_BLUE   = (135, 200, 235, 255)
+WINDOW_DK     = (75,  145, 185, 255)
+CRACK_DK      = (30,  22,  10,  255)
+DOOR_BROWN    = (105, 72,  38,  255)
+DOOR_LT       = (138, 100, 58,  255)
+KNOB_GOLD     = (210, 170, 30,  255)
+FLOWER_RED    = (210, 55,  55,  255)
+FLOWER_PINK   = (230, 125, 125, 255)
+FLOWER_GREEN  = (70,  128, 50,  255)
+FLOWER_SOIL   = (88,  58,  28,  255)
+ANTENNA       = (105, 100, 88,  255)
+DISH_GRAY     = (160, 155, 145, 255)
+DISH_DK       = (105, 100, 90,  255)
 
-
-def hline(draw, x1, x2, y, color):
-    for x in range(x1, x2 + 1):
-        draw.point((x, y), fill=color)
+# Lock
+LOCK_GRAY     = (88,  88,  98,  255)
+LOCK_LT       = (165, 165, 180, 255)
+LOCK_DK       = (55,  55,  65,  255)
+LOCK_GOLD     = (208, 168, 28,  255)
+LOCK_GOLD_LT  = (248, 218, 82,  255)
 
 
-def vline(draw, x, y1, y2, color):
+# ── Drawing helpers ────────────────────────────────────────────────────────────
+
+def px(draw, x, y, c):
+    draw.point((x, y), fill=c)
+
+def hline(draw, x1, x2, y, c):
+    if x2 >= x1:
+        draw.line([(x1, y), (x2, y)], fill=c)
+
+def vline(draw, x, y1, y2, c):
+    if y2 >= y1:
+        draw.line([(x, y1), (x, y2)], fill=c)
+
+def rect(draw, x1, y1, x2, y2, c):
+    draw.rectangle([x1, y1, x2, y2], fill=c)
+
+def grad_rect(draw, x1, y1, x2, y2, c_top, c_bot):
+    h = max(y2 - y1, 1)
     for y in range(y1, y2 + 1):
-        draw.point((x, y), fill=color)
+        t = (y - y1) / h
+        c = tuple(int(c_top[i] + (c_bot[i] - c_top[i]) * t) for i in range(4))
+        hline(draw, x1, x2, y, c)
+
+def poly(draw, pts, fill, outline=None):
+    draw.polygon(pts, fill=fill)
+    if outline:
+        draw.polygon(pts, outline=outline)
 
 
-def outline_rect(draw, x1, y1, x2, y2, fill, border):
-    rect(draw, x1, y1, x2, y2, fill)
-    draw.rectangle([x1, y1, x2, y2], outline=border)
+# ── Grass diamond fill (reusable) ─────────────────────────────────────────────
+
+def draw_grass_diamond(draw, cx, cy, hw, hh, rng_seed=7):
+    """Fill the isometric diamond top-face with grass checkerboard."""
+    rng = random.Random(rng_seed)
+    for row in range(hh + 1):
+        t = row / max(hh, 1)
+        span = int(row * hw / hh)
+        c = tuple(int(GRASS_LT[i] + (GRASS_MID[i] - GRASS_LT[i]) * t) for i in range(4))
+        hline(draw, cx - span, cx + span, cy - hh + row, c)
+        if row > 0:
+            hline(draw, cx - span, cx + span, cy + hh - row, c)
+    hline(draw, cx, cx, cy + hh, GRASS_MID)  # south vertex row
+    # Texture spots
+    for _ in range(55):
+        sx = rng.randint(cx - hw + 5, cx + hw - 5)
+        sy = rng.randint(cy - hh + 3, cy + hh - 3)
+        dx = abs(sx - cx) / hw
+        dy = abs(sy - cy) / hh
+        if dx + dy <= 0.88:
+            spot = GRASS_DK if rng.random() > 0.5 else (130, 195, 88, 255)
+            draw.point((sx, sy), fill=spot)
 
 
-# ─────────────────────────────────────────────
-# 1. lot_empty.png — 64×64 dirt tile
-# ─────────────────────────────────────────────
+def draw_front_faces(draw, cx, cy, hw, hh, face_h):
+    """Draw the two front-face parallelograms below the south vertex."""
+    south_y = cy + hh
+    for fy in range(face_h):
+        t = fy / max(face_h - 1, 1)
+        c = tuple(int(GROUND_FL[i] + (GROUND_FL_DK[i] - GROUND_FL[i]) * t) for i in range(4))
+        # Left front face
+        lx = cx - int(fy * hw / face_h)
+        hline(draw, lx, cx, south_y + fy, c)
+        # Right front face
+        rx = cx + int((face_h - fy) * hw / face_h)
+        if rx > cx:
+            hline(draw, cx, rx, south_y + fy, c)
+
+
+# ── 1. lot_empty.png — 128×96 ─────────────────────────────────────────────────
+# Rendered at Rect2(c.x-64, c.y-32, 128, 96)
+# Diamond: top=(64,0) left=(0,32) right=(128,32) south=(64,64)
+
 def generate_lot_empty():
-    img = Image.new("RGBA", (64, 64), TRANSPARENT)
+    W, H = 128, 96
+    img = Image.new("RGBA", (W, H), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    # Base dirt fill
-    rect(draw, 0, 0, 63, 63, DIRT)
+    cx, cy = 64, 32   # diamond center in sprite coords
+    hw, hh = 64, 32
 
-    # Subtle variation patches (lighter dirt areas)
-    light_patches = [
-        (8, 5, 22, 14), (38, 8, 52, 18), (10, 42, 25, 52),
-        (44, 44, 58, 55), (28, 25, 40, 35),
-    ]
-    for (x1, y1, x2, y2) in light_patches:
-        rect(draw, x1, y1, x2, y2, DIRT_LIGHT)
+    draw_grass_diamond(draw, cx, cy, hw, hh, rng_seed=7)
 
-    # Cracked earth lines
-    crack_segs = [
-        # (x1, y1, x2, y2) horizontal/vertical crack segments
-        [(12, 20), (18, 20), (22, 21), (26, 23)],
-        [(30, 38), (36, 37), (40, 38), (44, 40)],
-        [(5, 50), (10, 49), (14, 51)],
-        [(48, 12), (52, 13), (56, 12)],
-        [(20, 55), (24, 54), (28, 56)],
-        [(42, 28), (46, 27)],
-    ]
-    for seg in crack_segs:
-        for i in range(len(seg) - 1):
-            x1, y1 = seg[i]
-            x2, y2 = seg[i + 1]
-            # draw line pixel by pixel
-            dx = x2 - x1; dy = y2 - y1
-            steps = max(abs(dx), abs(dy))
-            if steps == 0:
-                continue
-            for s in range(steps + 1):
-                cx = x1 + round(dx * s / steps)
-                cy = y1 + round(dy * s / steps)
-                px(draw, cx, cy, DIRT_DARK)
+    # Dirt/mud patches near edges
+    rng = random.Random(42)
+    for _ in range(12):
+        ex = rng.randint(cx - hw + 2, cx + hw - 2)
+        ey = rng.randint(cy - hh + 2, cy + hh - 2)
+        dx = abs(ex - cx) / hw
+        dy = abs(ey - cy) / hh
+        if 0.65 < dx + dy < 0.90:
+            for ddx in range(-1, 2):
+                for ddy in range(-1, 2):
+                    nx, ny = ex + ddx, ey + ddy
+                    ndx = abs(nx - cx) / hw
+                    ndy = abs(ny - cy) / hh
+                    if ndx + ndy <= 0.92:
+                        draw.point((nx, ny), fill=(88, 62, 35, 200))
 
-    # Small pebbles (2×2 or 1×1)
-    pebbles = [
-        (7, 30, 2), (55, 22, 2), (32, 12, 1), (18, 48, 2),
-        (50, 50, 1), (38, 57, 2), (4, 10, 1), (60, 40, 1),
-    ]
-    for (px_, py_, sz) in pebbles:
-        rect(draw, px_, py_, px_ + sz - 1, py_ + sz - 1, PEBBLE_DARK)
-        # highlight top-left of pebble
-        draw.point((px_, py_), fill=PEBBLE_LIGHT)
+    draw_front_faces(draw, cx, cy, hw, hh, face_h=32)
 
-    # Tuft of dry grass — bottom-right corner
-    grass_tufts = [
-        (52, 54), (54, 52), (56, 55), (53, 57), (57, 53),
-        (55, 56), (58, 55), (51, 56),
-    ]
-    for (gx, gy) in grass_tufts:
-        # blade = vertical 2-3 px line
-        height = 3 if (gx + gy) % 2 == 0 else 2
-        for dy in range(height):
-            color = DRY_GRASS if dy < height - 1 else DRY_GRASS_DK
-            if 0 <= gy - dy <= 63:
-                draw.point((gx, gy - dy), fill=color)
-
-    # Faint grid border (subtle inner border)
-    c = DIRT_DARK
-    for i in range(64):
-        draw.point((i, 0), fill=c)
-        draw.point((0, i), fill=c)
-        draw.point((i, 63), fill=c)
-        draw.point((63, i), fill=c)
+    # Diamond outline
+    pts = [(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy), (cx, cy - hh)]
+    draw.line(pts, fill=OUTLINE, width=1)
 
     img.save(os.path.join(SPRITES_DIR, "lot_empty.png"))
-    print("Generated: lot_empty.png")
+    print("Generated: lot_empty.png  128×96")
 
 
-# ─────────────────────────────────────────────
-# 2. trailer_l1.png — 54×54 Level 1 trailer
-# ─────────────────────────────────────────────
+# ── 2. trailer_l1.png — 128×96 beat-up single-wide ───────────────────────────
+# Rendered at Rect2(c.x-64, c.y-64, 128, 96)
+# Diamond: top=(64,32) left=(0,64) right=(128,64) south=(64,96)
+# Box body: occupies y=0-64
+
 def generate_trailer_l1():
-    img = Image.new("RGBA", (54, 54), TRANSPARENT)
+    W, H = 128, 96
+    img = Image.new("RGBA", (W, H), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    # Skirting / base (bottom strip)
-    rect(draw, 2, 45, 51, 53, SKIRTING)
-    # Skirting panels — vertical lines
-    for sx in range(6, 51, 8):
-        vline(draw, sx, 45, 53, TRAILER_TRIM)
-    # Skirting outline
-    rect(draw, 2, 45, 51, 45, OUTLINE)
-    rect(draw, 2, 53, 51, 53, OUTLINE)
-    rect(draw, 2, 45, 2, 53, OUTLINE)
-    rect(draw, 51, 45, 51, 53, OUTLINE)
+    # --- Grass diamond (centered at 64,64 with hw=64,hh=32) ---
+    cx, cy = 64, 64   # diamond center
+    hw, hh = 64, 32
+    draw_grass_diamond(draw, cx, cy, hw, hh, rng_seed=13)
+    # No front face — south vertex is at bottom of canvas (64,96)
 
-    # Main body
-    rect(draw, 2, 8, 51, 44, TRAILER_CREAM)
+    # --- Isometric box definition ---
+    # Box sits on the diamond top surface.
+    # Front base: left=(0,64), right=(128,64)  [at diamond equator]
+    # Back base:  left=(40,52), right=(88,52)  [on the diamond's top face]
+    # Box height (screen): 28px
+    BOX_H = 28
+    FL = (0,   64)    # front-left base
+    FR = (128, 64)    # front-right base
+    BL = (40,  52)    # back-left base
+    BR = (88,  52)    # back-right base
 
-    # Top-left highlight (baked lighting)
-    for i in range(3):
-        vline(draw, 2 + i, 8, 44, CREAM_LIGHT if i == 0 else TRAILER_CREAM)
-    hline(draw, 2, 51, 8, CREAM_LIGHT)
-    hline(draw, 2, 51, 9, CREAM_LIGHT)
+    fl_t = (FL[0], FL[1] - BOX_H)   # (0,  36)
+    fr_t = (FR[0], FR[1] - BOX_H)   # (128,36)
+    bl_t = (BL[0], BL[1] - BOX_H)   # (40, 24)
+    br_t = (BR[0], BR[1] - BOX_H)   # (88, 24)
 
-    # Right + bottom shadow
-    for i in range(2):
-        vline(draw, 50 - i, 9, 44, CREAM_SHADOW)
-    hline(draw, 3, 51, 43, CREAM_SHADOW)
-    hline(draw, 3, 51, 44, CREAM_SHADOW)
+    # --- Left face (left side of trailer) ---
+    left_pts = [FL, fl_t, bl_t, BL]
+    poly(draw, left_pts, L1_SIDE)
+    # Horizontal siding lines
+    for y in range(fl_t[1] + 2, FL[1], 3):
+        # Interpolate x bounds at this y
+        t_side = (y - fl_t[1]) / max(FL[1] - fl_t[1], 1)
+        lx = int(FL[0] + (BL[0] - FL[0]) * t_side)
+        rx_top = int(fl_t[0] + (bl_t[0] - fl_t[0]) * (y - fl_t[1]) / max(FL[1] - fl_t[1], 1))
+        # left edge x of this scan line
+        x_left = int(FL[0] * (1 - t_side) + BL[0] * t_side)
+        x_right = int(fl_t[0] * (1 - t_side) + bl_t[0] * t_side)
+        hline(draw, x_left, x_right, y, L1_SIDE_DK)
 
-    # Weathering / grime patches
-    grime = [(15, 35, 20, 38), (35, 28, 38, 32), (8, 22, 10, 26)]
-    for (x1, y1, x2, y2) in grime:
-        rect(draw, x1, y1, x2, y2, CREAM_SHADOW)
+    # Window on left face (cracked)
+    # Face roughly: left edge x=0..40, y=36..64
+    # Window at y=40-48, x=8-18
+    ww_x1, ww_y1, ww_x2, ww_y2 = 8, 40, 20, 50
+    rect(draw, ww_x1 - 1, ww_y1 - 1, ww_x2 + 1, ww_y2 + 1, WINDOW_FRAME)
+    rect(draw, ww_x1, ww_y1, ww_x2, ww_y2, WINDOW_BLUE)
+    # Cracked pane
+    draw.line([(ww_x1 + 1, ww_y1 + 1), (ww_x2 - 2, ww_y2 - 2)], fill=CRACK_DK)
+    draw.line([(ww_x1 + 4, ww_y1 + 1), (ww_x1 + 1, ww_y2 - 2)], fill=CRACK_DK)
 
-    # Chipped paint spots
-    chip_spots = [(22, 30), (42, 38), (12, 40), (38, 20)]
-    for (cx, cy) in chip_spots:
-        draw.point((cx, cy), fill=DIRT_DARK)
-        draw.point((cx + 1, cy), fill=CREAM_SHADOW)
+    poly(draw, left_pts, None, OUTLINE)
 
-    # Roof
-    rect(draw, 1, 4, 52, 8, TRAILER_TRIM)
-    rect(draw, 2, 3, 51, 4, TRAILER_TRIM)
-    # Roof highlight
-    hline(draw, 2, 51, 3, (130, 115, 80, 255))
+    # --- Right face (front of trailer) ---
+    right_pts = [FR, fr_t, br_t, BR]
+    poly(draw, right_pts, L1_FRONT)
+    # Horizontal siding lines
+    for y in range(fr_t[1] + 2, FR[1], 3):
+        t_side = (y - fr_t[1]) / max(FR[1] - fr_t[1], 1)
+        x_left = int(fr_t[0] + (br_t[0] - fr_t[0]) * t_side)
+        x_right = int(FR[0] + (BR[0] - FR[0]) * t_side)
+        hline(draw, x_left, x_right, y, L1_FRONT_DK)
 
-    # TV Antenna
-    vline(draw, 38, 0, 3, ANTENNA)  # vertical mast
-    hline(draw, 35, 41, 1, ANTENNA)  # horizontal cross
-    draw.point((35, 1), fill=ANTENNA)
-    draw.point((41, 1), fill=ANTENNA)
-    draw.point((38, 0), fill=ANTENNA)
+    # Window on right face at y=40-48, x=100-112
+    rw_x1, rw_y1, rw_x2, rw_y2 = 100, 40, 112, 50
+    rect(draw, rw_x1 - 1, rw_y1 - 1, rw_x2 + 1, rw_y2 + 1, WINDOW_FRAME)
+    rect(draw, rw_x1, rw_y1, rw_x2, rw_y2, WINDOW_BLUE)
+    vline(draw, (rw_x1 + rw_x2) // 2, rw_y1, rw_y2, WINDOW_FRAME)
 
-    # Window left
-    rect(draw, 6, 14, 18, 26, WINDOW_BLUE)
-    rect(draw, 6, 14, 18, 26, None)
-    # Window frame
-    rect(draw, 5, 13, 19, 27, TRAILER_TRIM)
-    rect(draw, 6, 14, 18, 26, WINDOW_BLUE)
-    # Window cross dividers
-    vline(draw, 12, 14, 26, TRAILER_TRIM)
-    hline(draw, 6, 18, 20, TRAILER_TRIM)
-    # Window reflection/glint
-    draw.point((7, 15), fill=WHITE)
-    draw.point((8, 15), fill=WHITE)
-    draw.point((7, 16), fill=WHITE)
-    # Window shadow bottom-right
-    rect(draw, 14, 22, 18, 26, WINDOW_DK)
+    # Door on right face, roughly x=108-120, y=50-64
+    dr_x1, dr_y1, dr_x2, dr_y2 = 108, 50, 120, 64
+    rect(draw, dr_x1 - 1, dr_y1 - 1, dr_x2 + 1, dr_y2, DOOR_BROWN)
+    grad_rect(draw, dr_x1, dr_y1, dr_x2, dr_y2, DOOR_LT, DOOR_BROWN)
+    px(draw, dr_x1 + 2, (dr_y1 + dr_y2) // 2, KNOB_GOLD)
 
-    # Window right
-    rect(draw, 33, 13, 47, 27, TRAILER_TRIM)
-    rect(draw, 34, 14, 46, 26, WINDOW_BLUE)
-    vline(draw, 40, 14, 26, TRAILER_TRIM)
-    hline(draw, 34, 46, 20, TRAILER_TRIM)
-    draw.point((35, 15), fill=WHITE)
-    draw.point((36, 15), fill=WHITE)
-    draw.point((35, 16), fill=WHITE)
-    rect(draw, 42, 22, 46, 26, WINDOW_DK)
+    poly(draw, right_pts, None, OUTLINE)
 
-    # Door (center-right of body)
-    rect(draw, 22, 30, 32, 44, TRAILER_TRIM)
-    rect(draw, 23, 31, 31, 44, (180, 160, 120, 255))  # door fill
-    # Door knob
-    draw.point((30, 38), fill=COIN_YELLOW)
-    draw.point((30, 39), fill=COIN_ORANGE)
-    # Door shadow top
-    hline(draw, 23, 31, 31, CREAM_SHADOW)
+    # --- Roof face ---
+    roof_pts = [fl_t, bl_t, br_t, fr_t]
+    poly(draw, roof_pts, L1_ROOF)
+    # Slight dent / variation
+    mid_y = (fl_t[1] + bl_t[1]) // 2
+    hline(draw, fl_t[0] + 5, fr_t[0] - 5, mid_y + 2, L1_ROOF_LT)
+    hline(draw, fl_t[0] + 8, fr_t[0] - 8, mid_y + 4, L1_SIDE_DK)
+    poly(draw, roof_pts, None, OUTLINE)
 
-    # Small awning over door (simple L1 version — just a narrow visor)
-    rect(draw, 20, 28, 34, 30, TRAILER_TRIM)
-    hline(draw, 20, 34, 28, ANTENNA)
+    # Uneven roofline (1-2px variance)
+    for x in range(fl_t[0] + 2, fr_t[0] - 2, 4):
+        px(draw, x, fl_t[1] - 1 + (x % 3 == 0), L1_ROOF_LT)
 
-    # Body outline
-    draw.rectangle([2, 8, 51, 44], outline=OUTLINE)
-    draw.rectangle([1, 4, 52, 8], outline=OUTLINE)
+    # Antenna
+    vline(draw, 72, fl_t[1] - 7, fl_t[1], ANTENNA)
+    hline(draw, 68, 76, fl_t[1] - 5, ANTENNA)
 
-    # Rust streaks (weathering)
-    rust_lines = [(9, 28, 9, 33), (48, 15, 48, 20)]
-    for (x1, y1, x2, y2) in rust_lines:
-        for y in range(y1, y2 + 1):
-            draw.point((x1, y), fill=RED_RUST)
+    # --- Skirting strip at base of faces ---
+    # Left face bottom 4px
+    for fy in range(4):
+        t = (FL[1] - 4 + fy - fl_t[1]) / max(FL[1] - fl_t[1], 1)
+        lx = int(FL[0] * (1 - t) + BL[0] * t)
+        rx = int(fl_t[0] * (1 - t) + bl_t[0] * t)
+        hline(draw, lx, rx, FL[1] - 4 + fy, L1_SKIRT)
+    # Right face bottom 4px
+    for fy in range(4):
+        t = (FR[1] - 4 + fy - fr_t[1]) / max(FR[1] - fr_t[1], 1)
+        lx = int(fr_t[0] * (1 - t) + br_t[0] * t)
+        rx = int(FR[0] * (1 - t) + BR[0] * t)
+        hline(draw, lx, rx, FR[1] - 4 + fy, L1_SKIRT)
+
+    # Diamond outline
+    dpts = [(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy), (cx, cy - hh)]
+    draw.line(dpts, fill=OUTLINE, width=1)
 
     img.save(os.path.join(SPRITES_DIR, "trailer_l1.png"))
-    print("Generated: trailer_l1.png")
+    print("Generated: trailer_l1.png  128×96")
 
 
-# ─────────────────────────────────────────────
-# 3. trailer_l2.png — 54×54 Level 2 trailer
-# ─────────────────────────────────────────────
+# ── 3. trailer_l2.png — 128×96 clean double-wide ─────────────────────────────
+
 def generate_trailer_l2():
-    img = Image.new("RGBA", (54, 54), TRANSPARENT)
+    W, H = 128, 96
+    img = Image.new("RGBA", (W, H), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    # Nicer skirting
-    rect(draw, 2, 45, 51, 53, (160, 140, 90, 255))
-    for sx in range(6, 51, 6):
-        vline(draw, sx, 45, 53, (130, 110, 65, 255))
-    rect(draw, 2, 45, 51, 45, OUTLINE)
-    rect(draw, 2, 53, 51, 53, OUTLINE)
-    rect(draw, 2, 45, 2, 53, OUTLINE)
-    rect(draw, 51, 45, 51, 53, OUTLINE)
+    cx, cy = 64, 64
+    hw, hh = 64, 32
+    draw_grass_diamond(draw, cx, cy, hw, hh, rng_seed=13)
 
-    # Main body — gold
-    rect(draw, 2, 8, 51, 44, TRAILER_GOLD)
+    # Slightly taller box (32px) — double-wide
+    BOX_H = 32
+    FL = (0,   64)
+    FR = (128, 64)
+    BL = (40,  52)
+    BR = (88,  52)
 
-    # Highlight top-left
-    GOLD_LIGHT = (255, 230, 120, 255)
-    for i in range(3):
-        vline(draw, 2 + i, 8, 44, GOLD_LIGHT if i == 0 else TRAILER_GOLD)
-    hline(draw, 2, 51, 8, GOLD_LIGHT)
-    hline(draw, 2, 51, 9, GOLD_LIGHT)
+    fl_t = (FL[0], FL[1] - BOX_H)   # (0,  32)
+    fr_t = (FR[0], FR[1] - BOX_H)   # (128,32)
+    bl_t = (BL[0], BL[1] - BOX_H)   # (40, 20)
+    br_t = (BR[0], BR[1] - BOX_H)   # (88, 20)
 
-    # Right + bottom shadow
-    for i in range(2):
-        vline(draw, 50 - i, 9, 44, TRAILER_GOLD_DK)
-    hline(draw, 3, 51, 43, TRAILER_GOLD_DK)
-    hline(draw, 3, 51, 44, TRAILER_GOLD_DK)
+    # --- Left face ---
+    left_pts = [FL, fl_t, bl_t, BL]
+    poly(draw, left_pts, L2_SIDE)
+    # Vertical siding lines (cleaner than L1)
+    for x in range(6, 38, 6):
+        y_top = int(fl_t[1] + (bl_t[1] - fl_t[1]) * x / 40)
+        y_bot = int(FL[1] + (BL[1] - FL[1]) * x / 40)
+        vline(draw, x, y_top, y_bot, L2_SIDE_DK)
 
-    # Roof
-    rect(draw, 1, 4, 52, 8, TRAILER_TRIM)
-    rect(draw, 2, 3, 51, 4, TRAILER_TRIM)
-    hline(draw, 2, 51, 3, (130, 115, 80, 255))
+    # Two windows on left face
+    for wx, wy1 in [(6, 38), (18, 38)]:
+        wy2 = wy1 + 9
+        rect(draw, wx - 1, wy1 - 1, wx + 7, wy2 + 1, OUTLINE)
+        rect(draw, wx, wy1, wx + 6, wy2, WINDOW_BLUE)
+        vline(draw, wx + 3, wy1, wy2, WINDOW_FRAME)
+        px(draw, wx + 1, wy1 + 1, (200, 235, 255, 255))
 
-    # TV Antenna (still there, but cleaner)
-    vline(draw, 38, 0, 3, ANTENNA)
-    hline(draw, 35, 41, 1, ANTENNA)
+    poly(draw, left_pts, None, OUTLINE)
 
-    # Window left — nicer frame with white trim
-    rect(draw, 5, 13, 19, 27, OUTLINE)
-    rect(draw, 6, 14, 18, 26, WINDOW_BLUE)
-    rect(draw, 6, 14, 18, 26, None)
-    # White window trim
-    draw.rectangle([5, 13, 19, 27], outline=WHITE)
-    draw.rectangle([6, 14, 18, 26], fill=WINDOW_BLUE)
-    vline(draw, 12, 14, 26, (200, 220, 240, 255))
-    hline(draw, 6, 18, 20, (200, 220, 240, 255))
-    draw.point((7, 15), fill=WHITE)
-    draw.point((8, 15), fill=WHITE)
-    draw.point((7, 16), fill=WHITE)
-    draw.point((8, 16), fill=(230, 245, 255, 255))
-    rect(draw, 14, 22, 18, 26, WINDOW_DK)
+    # --- Right face ---
+    right_pts = [FR, fr_t, br_t, BR]
+    poly(draw, right_pts, L2_FRONT)
+    # Clean vertical lines
+    for xi in range(3):
+        x = 96 + xi * 10
+        t = (x - 88) / 40.0
+        y_top = int(fr_t[1] + (br_t[1] - fr_t[1]) * t)
+        y_bot = int(FR[1] + (BR[1] - FR[1]) * t)
+        vline(draw, x, y_top, y_bot, L2_FRONT_DK)
 
-    # Window right
-    draw.rectangle([33, 13, 47, 27], outline=WHITE)
-    draw.rectangle([34, 14, 46, 26], fill=WINDOW_BLUE)
-    vline(draw, 40, 14, 26, (200, 220, 240, 255))
-    hline(draw, 34, 46, 20, (200, 220, 240, 255))
-    draw.point((35, 15), fill=WHITE)
-    draw.point((36, 15), fill=WHITE)
-    draw.point((35, 16), fill=WHITE)
-    rect(draw, 42, 22, 46, 26, WINDOW_DK)
+    # Window on right face
+    rw_x1, rw_y1, rw_x2, rw_y2 = 92, 38, 102, 48
+    rect(draw, rw_x1 - 1, rw_y1 - 1, rw_x2 + 1, rw_y2 + 1, OUTLINE)
+    rect(draw, rw_x1, rw_y1, rw_x2, rw_y2, WINDOW_BLUE)
+    vline(draw, (rw_x1 + rw_x2) // 2, rw_y1, rw_y2, WINDOW_FRAME)
+    px(draw, rw_x1 + 1, rw_y1 + 1, (200, 235, 255, 255))
 
-    # Flower box under left window (L2 exclusive)
-    rect(draw, 5, 28, 19, 31, TRAILER_TRIM)
-    rect(draw, 6, 28, 18, 30, (120, 80, 40, 255))  # dirt in box
-    # Flowers: alternating red and pink dots
-    flower_colors = [FLOWER_RED, FLOWER_PINK, FLOWER_RED, FLOWER_PINK, FLOWER_RED, FLOWER_PINK]
-    for i, fc in enumerate(flower_colors):
-        fx = 7 + i * 2
-        draw.point((fx, 28), fill=fc)
-        draw.point((fx, 27), fill=(80, 160, 60, 255))  # stem leaf above
-    # Green leaves in box
-    for lx in range(6, 19, 3):
-        draw.point((lx, 29), fill=FLOWER_GREEN)
+    # Door with red awning on right face
+    dr_x1, dr_y1, dr_x2, dr_y2 = 110, 50, 122, 64
+    rect(draw, dr_x1 - 1, dr_y1 - 1, dr_x2 + 1, dr_y2, OUTLINE)
+    grad_rect(draw, dr_x1, dr_y1, dr_x2, dr_y2, (210, 185, 110, 255), DOOR_BROWN)
+    px(draw, dr_x1 + 2, (dr_y1 + dr_y2) // 2, KNOB_GOLD)
+    # Awning
+    awning_pts = [(dr_x1 - 3, dr_y1 - 1), (dr_x2 + 3, dr_y1 - 1),
+                  (dr_x2 + 1, dr_y1 - 5), (dr_x1 - 1, dr_y1 - 5)]
+    poly(draw, awning_pts, L2_AWNING, OUTLINE)
+    for sx in range(dr_x1 - 2, dr_x2 + 3, 3):
+        vline(draw, sx, dr_y1 - 5, dr_y1 - 1, L2_AWNING_DK)
 
-    # Door
-    rect(draw, 22, 30, 32, 44, OUTLINE)
-    rect(draw, 23, 31, 31, 44, (200, 175, 90, 255))  # nicer door, gold-ish
-    draw.point((30, 38), fill=COIN_YELLOW)
-    draw.point((30, 39), fill=COIN_ORANGE)
+    # Flower box below left window
+    fb_y = 49
+    rect(draw, 5, fb_y, 26, fb_y + 5, OUTLINE)
+    rect(draw, 6, fb_y + 1, 25, fb_y + 4, FLOWER_SOIL)
+    for i, fc in enumerate([FLOWER_RED, FLOWER_PINK, FLOWER_RED, FLOWER_PINK]):
+        fx = 7 + i * 4
+        px(draw, fx, fb_y + 1, fc)
+        px(draw, fx, fb_y + 2, FLOWER_GREEN)
 
-    # Awning over door (L2 — proper red striped awning)
-    rect(draw, 19, 26, 35, 30, AWNING_RED)
-    # Stripes
-    for sx in range(20, 35, 3):
-        vline(draw, sx, 26, 30, AWNING_RED_DK)
-    # Awning valance (bottom edge scallop — simplified)
-    for sx in range(19, 36, 2):
-        draw.point((sx, 30), fill=AWNING_RED_DK)
-    rect(draw, 19, 26, 35, 26, OUTLINE)
-    rect(draw, 19, 26, 19, 30, OUTLINE)
-    rect(draw, 35, 26, 35, 30, OUTLINE)
+    poly(draw, right_pts, None, OUTLINE)
 
-    # Body outline
-    draw.rectangle([2, 8, 51, 44], outline=OUTLINE)
-    draw.rectangle([1, 4, 52, 8], outline=OUTLINE)
+    # --- Roof face ---
+    roof_pts = [fl_t, bl_t, br_t, fr_t]
+    poly(draw, roof_pts, L2_ROOF)
+    # Clean highlight near ridge
+    mid_y = (fl_t[1] + bl_t[1]) // 2
+    hline(draw, fl_t[0] + 4, fr_t[0] - 4, mid_y + 1, L2_ROOF_LT)
+    poly(draw, roof_pts, None, OUTLINE)
+
+    # Satellite dish on roof
+    dish_cx, dish_cy = 55, 24
+    draw.ellipse([dish_cx - 4, dish_cy - 2, dish_cx + 4, dish_cy + 2], fill=DISH_GRAY, outline=DISH_DK)
+    vline(draw, dish_cx, dish_cy + 2, dish_cy + 5, DISH_DK)
+
+    # Diamond outline
+    dpts = [(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy), (cx, cy - hh)]
+    draw.line(dpts, fill=OUTLINE, width=1)
 
     img.save(os.path.join(SPRITES_DIR, "trailer_l2.png"))
-    print("Generated: trailer_l2.png")
+    print("Generated: trailer_l2.png  128×96")
 
 
-# ─────────────────────────────────────────────
-# 4. icon_lock.png — 24×24 padlock
-# ─────────────────────────────────────────────
+# ── 4. icon_lock.png — 32×32 ──────────────────────────────────────────────────
+
 def generate_icon_lock():
-    img = Image.new("RGBA", (24, 24), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
-
-    # Lock body — dark gray metal rectangle
-    rect(draw, 3, 11, 20, 21, LOCK_GRAY)
-    # Body highlight top-left
-    hline(draw, 4, 19, 11, (180, 180, 190, 255))
-    vline(draw, 3, 12, 20, (180, 180, 190, 255))
-    # Body shadow bottom-right
-    hline(draw, 4, 20, 21, (60, 60, 68, 255))
-    vline(draw, 20, 12, 21, (60, 60, 68, 255))
-    # Body outline
-    draw.rectangle([3, 11, 20, 21], outline=OUTLINE)
-
-    # Keyhole
-    rect(draw, 10, 14, 13, 19, (40, 40, 45, 255))
-    draw.point((11, 14), fill=(40, 40, 45, 255))
-    draw.point((12, 14), fill=(40, 40, 45, 255))
-    # Keyhole circle top
-    for pt in [(10, 13), (11, 13), (12, 13), (13, 13),
-               (9, 14), (14, 14), (9, 15), (14, 15),
-               (10, 16), (11, 16), (12, 16), (13, 16)]:
-        draw.point(pt, fill=(40, 40, 45, 255))
-
-    # Gold shackle (U-shape)
-    SHACKLE = LOCK_GOLD
-    SHACKLE_DK = (160, 130, 20, 255)
-    SHACKLE_LT = (240, 210, 80, 255)
-    # Left vertical
-    vline(draw, 7, 4, 11, SHACKLE)
-    # Right vertical
-    vline(draw, 16, 4, 11, SHACKLE)
-    # Top arc (3 px wide arc)
-    for pt in [(8, 3), (9, 2), (10, 2), (11, 2), (12, 2), (13, 2), (14, 3), (15, 4)]:
-        draw.point(pt, fill=SHACKLE)
-    draw.point((7, 5), fill=SHACKLE)
-    draw.point((16, 5), fill=SHACKLE)
-    # Shackle width — make it 2px thick
-    vline(draw, 8, 4, 11, SHACKLE)
-    vline(draw, 15, 4, 11, SHACKLE)
-    for pt in [(9, 2), (10, 2), (11, 2), (12, 2), (13, 2), (14, 2)]:
-        draw.point(pt, fill=SHACKLE)
-    for pt in [(9, 3), (10, 3), (11, 3), (12, 3), (13, 3), (14, 3)]:
-        draw.point(pt, fill=SHACKLE)
-    # Shackle highlight
-    vline(draw, 7, 4, 10, SHACKLE_LT)
-    draw.point((8, 3), fill=SHACKLE_LT)
-    # Shackle shadow
-    vline(draw, 16, 4, 10, SHACKLE_DK)
-    # Outline shackle
-    for pt in [(6, 4), (6, 5), (6, 6), (6, 7), (6, 8), (6, 9), (6, 10), (6, 11)]:
-        draw.point(pt, fill=OUTLINE)
-    for pt in [(17, 4), (17, 5), (17, 6), (17, 7), (17, 8), (17, 9), (17, 10), (17, 11)]:
-        draw.point(pt, fill=OUTLINE)
-    for pt in [(8, 1), (9, 1), (10, 1), (11, 1), (12, 1), (13, 1), (14, 1), (15, 1)]:
-        draw.point(pt, fill=OUTLINE)
-    draw.point((7, 2), fill=OUTLINE)
-    draw.point((16, 2), fill=OUTLINE)
-
-    img.save(os.path.join(SPRITES_DIR, "icon_lock.png"))
-    print("Generated: icon_lock.png")
-
-
-# ─────────────────────────────────────────────
-# 5. icon_coin.png — 24×24 gold coin
-# ─────────────────────────────────────────────
-def generate_icon_coin():
-    img = Image.new("RGBA", (24, 24), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
-
-    # Coin circle (radius 10, centered at 12,12)
-    cx, cy, r = 11, 12, 10
-    # Draw filled circle
-    for y in range(24):
-        for x in range(24):
-            dx = x - cx; dy = y - cy
-            if dx * dx + dy * dy <= r * r:
-                draw.point((x, y), fill=COIN_YELLOW)
-
-    # Shading — darker on bottom-right
-    for y in range(24):
-        for x in range(24):
-            dx = x - cx; dy = y - cy
-            d2 = dx * dx + dy * dy
-            if d2 <= r * r:
-                # Bottom-right quadrant
-                if dx + dy > 6:
-                    draw.point((x, y), fill=COIN_ORANGE)
-
-    # Rim — slightly darker ring
-    for y in range(24):
-        for x in range(24):
-            dx = x - cx; dy = y - cy
-            d2 = dx * dx + dy * dy
-            if (r - 2) * (r - 2) < d2 <= r * r:
-                draw.point((x, y), fill=COIN_ORANGE)
-
-    # Highlight top-left arc
-    HL = COIN_LIGHT
-    for y in range(24):
-        for x in range(24):
-            dx = x - cx; dy = y - cy
-            d2 = dx * dx + dy * dy
-            if d2 <= (r - 3) * (r - 3) and dx + dy < -2:
-                draw.point((x, y), fill=HL)
-
-    # "$" symbol in center — pixel art
-    # Draw a simple "$" using pixel lines (7×9 area centered at ~11,12)
-    dollar = [
-        # top arc
-        (9, 5), (10, 5), (11, 5), (12, 5), (13, 5),
-        (8, 6),
-        (8, 7), (9, 7), (10, 7), (11, 7), (12, 7), (13, 7),
-        (13, 8),
-        (13, 9), (12, 9), (11, 9), (10, 9), (9, 9), (8, 9),
-        (8, 10),
-        (8, 11), (9, 11), (10, 11), (11, 11), (12, 11), (13, 11),
-        (13, 12),
-        (12, 13),
-        # vertical bar through center
-        (11, 3), (11, 4), (11, 5), (11, 6), (11, 7), (11, 8),
-        (11, 9), (11, 10), (11, 11), (11, 12), (11, 13), (11, 14), (11, 15),
-    ]
-    for (sx, sy) in dollar:
-        if 0 <= sx < 24 and 0 <= sy < 24:
-            draw.point((sx, sy), fill=COIN_ORANGE)
-
-    # Outline circle
-    for y in range(24):
-        for x in range(24):
-            dx = x - cx; dy = y - cy
-            d2 = dx * dx + dy * dy
-            if r * r < d2 <= (r + 1.5) * (r + 1.5):
-                draw.point((x, y), fill=OUTLINE)
-
-    img.save(os.path.join(UI_DIR, "icon_coin.png"))
-    print("Generated: icon_coin.png")
-
-
-# ─────────────────────────────────────────────
-# 6. icon_account.png — 32×32 profile silhouette
-# ─────────────────────────────────────────────
-def generate_icon_account():
     img = Image.new("RGBA", (32, 32), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    PERSON = (130, 130, 145, 255)    # gray (anonymous state)
-    PERSON_DK = (90, 90, 105, 255)
-    PERSON_LT = (175, 175, 190, 255)
+    # Body
+    rect(draw, 5, 15, 26, 28, LOCK_GRAY)
+    draw.rectangle([5, 15, 26, 28], outline=OUTLINE)
+    # Highlight edge
+    hline(draw, 6, 25, 16, LOCK_LT)
+    vline(draw, 6, 16, 27, LOCK_LT)
 
-    # Head — circle, centered at (16, 10), radius 6
-    hcx, hcy, hr = 16, 10, 6
-    for y in range(32):
-        for x in range(32):
-            dx = x - hcx; dy = y - hcy
-            if dx * dx + dy * dy <= hr * hr:
-                draw.point((x, y), fill=PERSON)
+    # Keyhole
+    draw.ellipse([12, 19, 18, 25], fill=LOCK_DK)
+    rect(draw, 14, 23, 16, 27, LOCK_DK)
 
-    # Head highlight
-    for y in range(32):
-        for x in range(32):
-            dx = x - hcx; dy = y - hcy
-            if dx * dx + dy * dy <= hr * hr and dx + dy < -3:
-                draw.point((x, y), fill=PERSON_LT)
+    # Shackle (gold arc)
+    vline(draw, 10, 6, 15, LOCK_GOLD)
+    vline(draw, 11, 6, 15, LOCK_GOLD)
+    vline(draw, 20, 6, 15, LOCK_GOLD)
+    vline(draw, 21, 6, 15, LOCK_GOLD)
+    # Arc top
+    for pt in [(12, 4), (13, 3), (14, 3), (15, 3), (16, 3), (17, 3), (18, 4), (19, 5)]:
+        draw.point(pt, fill=LOCK_GOLD)
+    for pt in [(12, 3), (13, 2), (14, 2), (15, 2), (16, 2), (17, 2), (18, 3), (19, 4)]:
+        draw.point(pt, fill=LOCK_GOLD)
+    # Highlight
+    vline(draw, 10, 6, 13, LOCK_GOLD_LT)
+    # Outline shackle
+    for y in range(5, 15):
+        draw.point((9, y), fill=OUTLINE)
+        draw.point((22, y), fill=OUTLINE)
+    for pt in [(10, 1), (11, 1), (12, 1), (13, 1), (14, 1),
+               (15, 1), (16, 1), (17, 1), (18, 1), (19, 2), (20, 3), (21, 4)]:
+        draw.point(pt, fill=OUTLINE)
+    draw.point((9, 2), fill=OUTLINE)
 
-    # Head outline
-    for y in range(32):
-        for x in range(32):
-            dx = x - hcx; dy = y - hcy
-            d2 = dx * dx + dy * dy
-            if hr * hr < d2 <= (hr + 1.5) * (hr + 1.5):
-                draw.point((x, y), fill=OUTLINE)
-
-    # Body — trapezoid (shoulders wide, narrows down)
-    # Shoulders: y=18 to y=30
-    body_pts = [
-        (7, 30), (25, 30), (23, 18), (9, 18)
-    ]
-    draw.polygon(body_pts, fill=PERSON)
-    # Body highlight left edge
-    vline(draw, 9, 19, 29, PERSON_LT)
-    hline(draw, 10, 22, 19, PERSON_LT)
-    # Body shadow right edge
-    vline(draw, 24, 19, 29, PERSON_DK)
-    # Body outline
-    draw.polygon(body_pts, outline=OUTLINE)
-
-    # Neck
-    rect(draw, 13, 16, 19, 19, PERSON)
-    rect(draw, 13, 16, 19, 19, None)
-    vline(draw, 13, 16, 18, OUTLINE)
-    vline(draw, 19, 16, 18, OUTLINE)
-
-    img.save(os.path.join(UI_DIR, "icon_account.png"))
-    print("Generated: icon_account.png")
+    img.save(os.path.join(SPRITES_DIR, "icon_lock.png"))
+    print("Generated: icon_lock.png  32×32")
 
 
-# ─────────────────────────────────────────────
-# 7. icon_quest.png — 24×24 scroll/quest icon
-# ─────────────────────────────────────────────
-def generate_icon_quest():
-    img = Image.new("RGBA", (24, 24), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
+# ── Main ──────────────────────────────────────────────────────────────────────
 
-    SCROLL_TAN = (220, 190, 140, 255)
-    SCROLL_DK  = (170, 135, 85, 255)
-    SCROLL_LT  = (245, 225, 185, 255)
-    SCROLL_EDGE= (140, 100, 55, 255)
-    INK        = (60, 40, 15, 255)
-    STAR_Y     = (255, 210, 30, 255)
-    STAR_DK    = (200, 160, 0, 255)
-
-    # Scroll body
-    rect(draw, 4, 3, 19, 20, SCROLL_TAN)
-    # Top/bottom rolled edges
-    rect(draw, 3, 2, 20, 4, SCROLL_EDGE)
-    rect(draw, 3, 19, 20, 21, SCROLL_EDGE)
-    # Rolled edge highlights
-    hline(draw, 4, 19, 2, SCROLL_LT)
-    hline(draw, 4, 19, 20, SCROLL_DK)
-    # Left/right edge shadow
-    vline(draw, 4, 3, 20, SCROLL_LT)
-    vline(draw, 19, 3, 20, SCROLL_DK)
-    # Body outline
-    draw.rectangle([3, 2, 20, 21], outline=OUTLINE)
-    # Inner highlight
-    hline(draw, 5, 18, 4, SCROLL_LT)
-
-    # Text lines on scroll (pixel art "lines of text")
-    line_ys = [7, 10, 13, 16]
-    for ly in line_ys:
-        hline(draw, 6, 17, ly, INK)
-    # Last line shorter (looks like real text)
-    hline(draw, 6, 13, 16, INK)
-
-    # Star badge — top-right corner (quest star)
-    # 5-pointed pixel star, small, at (17, 3)
-    star_pts = [
-        (17, 0), (18, 2), (20, 2), (19, 4), (20, 6),
-        (17, 5), (14, 6), (15, 4), (14, 2), (16, 2),
-    ]
-    draw.polygon(star_pts, fill=STAR_Y)
-    draw.polygon(star_pts, outline=OUTLINE)
-    # Star highlight
-    draw.point((17, 1), fill=(255, 240, 100, 255))
-    draw.point((17, 2), fill=(255, 240, 100, 255))
-
-    img.save(os.path.join(UI_DIR, "icon_quest.png"))
-    print("Generated: icon_quest.png")
-
-
-# ─────────────────────────────────────────────
-# 8. bg_park.png — 640×512 park background
-# ─────────────────────────────────────────────
-def generate_bg_park():
-    img = Image.new("RGBA", (640, 512), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
-
-    # Ground fill — muted dirt/scrubby grass
-    BG_DIRT  = (180, 155, 110, 255)   # muted dirt, doesn't compete
-    BG_GRASS = (120, 155, 88, 255)    # muted grass
-    BG_GRASS_DK = (95, 125, 65, 255)
-
-    # Fill base ground
-    rect(draw, 0, 0, 639, 511, BG_DIRT)
-
-    # Grass patches scattered across ground
-    import random as rng
-    rng.seed(42)
-    for _ in range(180):
-        gx = rng.randint(0, 635)
-        gy = rng.randint(0, 507)
-        gw = rng.randint(4, 18)
-        gh = rng.randint(3, 10)
-        alpha = rng.randint(60, 130)
-        gc = (BG_GRASS[0], BG_GRASS[1], BG_GRASS[2], 255) if rng.random() > 0.4 else BG_GRASS_DK
-        rect(draw, gx, gy, gx + gw, gy + gh, gc)
-
-    # Dirt variation patches
-    for _ in range(80):
-        px_ = rng.randint(0, 620)
-        py_ = rng.randint(0, 495)
-        pw = rng.randint(8, 30)
-        ph = rng.randint(5, 20)
-        rect(draw, px_, py_, px_ + pw, py_ + ph, (195, 170, 125, 255))
-
-    # Perimeter fence — weathered wood planks
-    PLANK     = (155, 120, 75, 255)
-    PLANK_DK  = (115, 85, 45, 255)
-    PLANK_LT  = (190, 155, 105, 255)
-    POST      = (100, 72, 38, 255)
-    POST_LT   = (140, 105, 65, 255)
-    FENCE_W = 12   # fence thickness (px)
-    FENCE_OFF = 4  # offset from edge
-
-    # Top fence
-    rect(draw, FENCE_OFF, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF + FENCE_W, PLANK)
-    # Bottom planks
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF, PLANK_LT)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF + FENCE_W, PLANK_DK)
-    # Horizontal rail lines
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF + 4, PLANK_DK)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF + 8, PLANK_DK)
-    # Vertical fence posts every 40px
-    for fpx in range(FENCE_OFF, 640, 40):
-        rect(draw, fpx, FENCE_OFF - 2, fpx + 4, FENCE_OFF + FENCE_W + 2, POST)
-        vline(draw, fpx, FENCE_OFF - 2, FENCE_OFF + FENCE_W + 2, POST_LT)
-
-    # Bottom fence
-    rect(draw, FENCE_OFF, 511 - FENCE_OFF - FENCE_W, 639 - FENCE_OFF, 511 - FENCE_OFF, PLANK)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, 511 - FENCE_OFF - FENCE_W, PLANK_LT)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, 511 - FENCE_OFF, PLANK_DK)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, 511 - FENCE_OFF - FENCE_W + 4, PLANK_DK)
-    hline(draw, FENCE_OFF, 639 - FENCE_OFF, 511 - FENCE_OFF - FENCE_W + 8, PLANK_DK)
-    for fpx in range(FENCE_OFF, 640, 40):
-        rect(draw, fpx, 511 - FENCE_OFF - FENCE_W - 2, fpx + 4, 511 - FENCE_OFF + 2, POST)
-        vline(draw, fpx, 511 - FENCE_OFF - FENCE_W - 2, 511 - FENCE_OFF + 2, POST_LT)
-
-    # Left fence
-    rect(draw, FENCE_OFF, FENCE_OFF + FENCE_W, FENCE_OFF + FENCE_W, 511 - FENCE_OFF - FENCE_W, PLANK)
-    for fpy in range(FENCE_OFF + FENCE_W, 512, 40):
-        rect(draw, FENCE_OFF - 2, fpy, FENCE_OFF + FENCE_W + 2, fpy + 4, POST)
-        hline(draw, FENCE_OFF - 2, FENCE_OFF + FENCE_W + 2, fpy, POST_LT)
-    vline(draw, FENCE_OFF, FENCE_OFF + FENCE_W, 511 - FENCE_OFF - FENCE_W, PLANK_LT)
-    vline(draw, FENCE_OFF + FENCE_W, FENCE_OFF + FENCE_W, 511 - FENCE_OFF - FENCE_W, PLANK_DK)
-
-    # Right fence
-    rect(draw, 639 - FENCE_OFF - FENCE_W, FENCE_OFF + FENCE_W, 639 - FENCE_OFF, 511 - FENCE_OFF - FENCE_W, PLANK)
-    for fpy in range(FENCE_OFF + FENCE_W, 512, 40):
-        rect(draw, 639 - FENCE_OFF - FENCE_W - 2, fpy, 639 - FENCE_OFF + 2, fpy + 4, POST)
-        hline(draw, 639 - FENCE_OFF - FENCE_W - 2, 639 - FENCE_OFF + 2, fpy, POST_LT)
-    vline(draw, 639 - FENCE_OFF - FENCE_W, FENCE_OFF + FENCE_W, 511 - FENCE_OFF - FENCE_W, PLANK_LT)
-    vline(draw, 639 - FENCE_OFF, FENCE_OFF + FENCE_W, 511 - FENCE_OFF - FENCE_W, PLANK_DK)
-
-    # Background element: WATER TOWER — top-right outside fence area
-    # Position: far top-right background (muted, low detail)
-    WT_GRAY   = (120, 115, 108, 255)
-    WT_DK     = (85, 80, 73, 255)
-    WT_LT     = (160, 155, 148, 255)
-    WT_ROOF   = (95, 88, 75, 255)
-    wtx, wty = 570, 20   # top-left of water tower bounding box
-    # Legs (4 thin posts)
-    for lx in [wtx + 8, wtx + 14, wtx + 22, wtx + 28]:
-        vline(draw, lx, wty + 35, wty + 65, WT_DK)
-    # Cross braces
-    for by in [wty + 40, wty + 50, wty + 60]:
-        hline(draw, wtx + 8, wtx + 28, by, WT_DK)
-    # Tank — rounded rectangle
-    rect(draw, wtx + 4, wty + 10, wtx + 36, wty + 36, WT_GRAY)
-    rect(draw, wtx + 2, wty + 16, wtx + 38, wty + 32, WT_GRAY)
-    # Tank highlight
-    hline(draw, wtx + 5, wtx + 35, wty + 10, WT_LT)
-    vline(draw, wtx + 4, wty + 11, wty + 35, WT_LT)
-    # Tank shadow
-    hline(draw, wtx + 5, wtx + 35, wty + 36, WT_DK)
-    vline(draw, wtx + 36, wty + 11, wty + 35, WT_DK)
-    # Cone roof
-    roof_pts = [(wtx + 20, wty + 3), (wtx + 3, wty + 11), (wtx + 37, wty + 11)]
-    draw.polygon(roof_pts, fill=WT_ROOF)
-    draw.polygon(roof_pts, outline=(60, 55, 45, 255))
-    # Outline tank
-    draw.rectangle([wtx + 4, wty + 10, wtx + 36, wty + 36], outline=(60, 55, 45, 255))
-
-    # Background element: DEAD PALM TREE — top-left area
-    TRUNK = (130, 100, 60, 255)
-    TRUNK_DK = (95, 70, 35, 255)
-    LEAF = (95, 130, 65, 255)
-    LEAF_DK = (65, 95, 40, 255)
-    tx, ty = 55, 25   # base of trunk (top of image area)
-    # Trunk — tapers slightly
-    for i in range(45):
-        w = 4 if i < 30 else 3
-        off = i // 20
-        hline(draw, tx + off, tx + off + w, ty + i, TRUNK if i % 3 != 0 else TRUNK_DK)
-    # Palm fronds (dead/sparse — 4 drooping fronds)
-    frond_angles = [(-20, -30), (20, -30), (-10, -25), (12, -26)]
-    for (fx, fy) in frond_angles:
-        # Draw frond as series of points drooping outward
-        steps = 15
-        for s in range(steps):
-            fpx = tx + 2 + (fx * s) // steps
-            fpy = ty + (fy * s) // steps + s // 2  # drooping
-            lc = LEAF if s < steps - 3 else LEAF_DK
-            if 0 <= fpx < 640 and 0 <= fpy < 512:
-                draw.point((fpx, fpy), fill=lc)
-                if s < steps - 2:
-                    draw.point((fpx + 1, fpy), fill=lc)
-
-    # Distant road/highway hint — very subtle horizontal strip far bottom
-    # (muted gray strip near bottom outside fence)
-    road_y = 500
-    rect(draw, 0, road_y, 639, 511, (150, 145, 138, 255))
-    hline(draw, 0, 639, road_y, (130, 125, 118, 255))
-    # Road dashes (center line)
-    for rx in range(20, 620, 40):
-        hline(draw, rx, rx + 20, road_y + 5, (200, 195, 185, 255))
-
-    # Subtle vignette darkening on outer edges (top-down style)
-    VIGNETTE = (30, 20, 10, 60)  # very subtle dark overlay
-    for edge_w in range(8):
-        alpha = 50 - edge_w * 5
-        if alpha <= 0:
-            break
-        vc = (20, 14, 6, alpha)
-        hline(draw, 0, 639, edge_w, vc)
-        hline(draw, 0, 639, 511 - edge_w, vc)
-        vline(draw, edge_w, 0, 511, vc)
-        vline(draw, 639 - edge_w, 0, 511, vc)
-
-    # Fence outlines (on top)
-    draw.rectangle([FENCE_OFF, FENCE_OFF, 639 - FENCE_OFF, FENCE_OFF + FENCE_W], outline=OUTLINE)
-    draw.rectangle([FENCE_OFF, 511 - FENCE_OFF - FENCE_W, 639 - FENCE_OFF, 511 - FENCE_OFF], outline=OUTLINE)
-
-    img.save(os.path.join(SPRITES_DIR, "bg_park.png"))
-    print("Generated: bg_park.png")
-
-
-# ─────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────
 if __name__ == "__main__":
     os.makedirs(SPRITES_DIR, exist_ok=True)
     os.makedirs(UI_DIR, exist_ok=True)
@@ -808,27 +463,13 @@ if __name__ == "__main__":
     generate_trailer_l1()
     generate_trailer_l2()
     generate_icon_lock()
-    generate_icon_coin()
-    generate_icon_account()
-    generate_icon_quest()
-    generate_bg_park()
 
-    print("\nVerifying output files:")
-    all_files = [
-        (SPRITES_DIR, "lot_empty.png"),
-        (SPRITES_DIR, "trailer_l1.png"),
-        (SPRITES_DIR, "trailer_l2.png"),
-        (SPRITES_DIR, "icon_lock.png"),
-        (UI_DIR, "icon_coin.png"),
-        (UI_DIR, "icon_account.png"),
-        (UI_DIR, "icon_quest.png"),
-        (SPRITES_DIR, "bg_park.png"),
-    ]
-    for (d, f) in all_files:
-        path = os.path.join(d, f)
+    print("\nVerifying output:")
+    for fname in ["lot_empty.png", "trailer_l1.png", "trailer_l2.png", "icon_lock.png"]:
+        path = os.path.join(SPRITES_DIR, fname)
         if os.path.exists(path):
             im = Image.open(path)
             size = os.path.getsize(path)
-            print(f"  OK  {f:25s} {im.size[0]}x{im.size[1]}  ({size:,} bytes)")
+            print(f"  OK  {fname:25s} {im.size[0]}×{im.size[1]}  ({size:,} bytes)")
         else:
-            print(f"  MISSING: {f}")
+            print(f"  MISSING: {fname}")

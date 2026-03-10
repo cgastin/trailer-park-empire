@@ -14,6 +14,10 @@ const AuthScreenScene       := preload("res://scenes/ui/AuthScreen.tscn")
 @onready var income_manager: Node     = $IncomeManager
 @onready var account_button: Button   = $UI/AccountButton
 @onready var park_background: Sprite2D = $ParkBackground
+@onready var camera: Camera2D         = $Camera2D
+
+const CAMERA_ZOOM   := Vector2(1.5, 1.5)
+const CAMERA_BOUNDS := Rect2(490, 330, 300, 100)  # world-space pan limits
 
 var trailer_placer: Node
 var trailer_upgrader: Node
@@ -21,8 +25,12 @@ var unlock_manager: Node
 var quest_manager: Node
 
 var _local_saved_at: int = 0
+var _drag_active  := false
+var _drag_origin  := Vector2.ZERO
+var _cam_origin   := Vector2.ZERO
 
 func _ready() -> void:
+	camera.zoom = CAMERA_ZOOM
 	_load_background()
 	unlock_manager = UnlockManagerScript.new()
 	add_child(unlock_manager)
@@ -60,6 +68,25 @@ func _ready() -> void:
 	save_system.local_save_completed.connect(_on_local_save_completed)
 	CloudSave.download_completed.connect(_on_cloud_download_completed)
 	account_button.pressed.connect(_on_account_button_pressed)
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_drag_active = true
+			_drag_origin = event.position
+			_cam_origin  = camera.position
+		else:
+			_drag_active = false
+	elif event is InputEventMouseMotion and _drag_active:
+		var delta: Vector2 = (event as InputEventMouseMotion).position - _drag_origin
+		if delta.length() > 4.0:
+			var new_pos: Vector2 = _cam_origin - delta / camera.zoom.x
+			camera.position = new_pos.clamp(
+				CAMERA_BOUNDS.position,
+				CAMERA_BOUNDS.position + CAMERA_BOUNDS.size
+			)
+			get_viewport().set_input_as_handled()
+
 
 # Route clicks: locked lots are blocked, occupied go to upgrader, empty go to placer
 func _on_lot_clicked(grid_pos: Vector2i) -> void:
