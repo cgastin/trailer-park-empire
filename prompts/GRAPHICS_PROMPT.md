@@ -6,15 +6,34 @@ Guidance for art agents generating sprites and UI assets for **Trailer Park Empi
 
 ## Art Style
 
-**Pixel art, top-down isometric-lite (flat top-down, not true isometric).**
+**Isometric cartoon (FarmVille style) — smooth gradients, bold outlines, implied 3D depth.**
 
-References: Stardew Valley, early FarmVille, Tiny Tower.
+References: FarmVille 2, Hay Day, Township.
 
-- Clean, chunky pixels — 16×16 or 32×32 base tile size scaled up
-- Warm, slightly desaturated palette — dusty Southern US trailer park aesthetic
-- Outlines: 1px dark outline on all sprites
-- Lighting: flat (no dynamic shadows); baked highlight on top-left corner
-- Mood: charming and a little run-down, not grim — think comedy, not tragedy
+- True isometric projection: 2:1 width-to-height diamond tiles
+- Smooth shading with gradient fills (no hard pixel-art steps)
+- 1–2 px dark outline on all opaque shapes (`#1E140A`)
+- Lighting: top-left light source; lighter top/right face, darker left/front face
+- Colors: saturated, warm, cartoon-friendly — not neon, not desaturated
+- Mood: cheerful Southern US trailer park — charming and a little run-down
+
+---
+
+## Isometric Grid Math
+
+```
+Tile diamond:  128 wide × 64 tall
+Tile faces:    top face = 128×64 diamond
+               left/front faces = visible below the top face
+
+Grid origin (in LotGrid local space):  x=640, y=90   ← north tip of grid
+Grid-to-screen:
+  x = 640 + (col - row) * 64
+  y =  90 + (col + row) * 32
+
+Grid: 10 columns × 8 rows
+Bounding box: 1152×576 px — centered in 1280×720 viewport
+```
 
 ---
 
@@ -22,148 +41,168 @@ References: Stardew Valley, early FarmVille, Tiny Tower.
 
 | Name | Hex | Usage |
 |---|---|---|
-| Dirt ground | `#C4A882` | Empty lot background |
-| Dry grass | `#8BAD6A` | Lot border / park perimeter |
-| Trailer cream | `#F2E6C5` | Level 1 trailer body |
-| Trailer gold | `#FFCC40` | Level 2 trailer body |
-| Trailer trim | `#665A3F` | Trailer outline / trim |
-| Window blue | `#8DC8EB` | Trailer windows |
-| Lock shadow | `#00000099` | Locked lot overlay (55% black) |
+| Outline | `#1E140A` | All sprite outlines |
+| Grass top | `#6EAF4B` | Lot tile top face |
+| Grass mid | `#559137` | Lot tile gradient end |
+| Ground front | `#4B6E2D` | Lot tile front face |
+| Cream body | `#F2E1AF` | L1 trailer main face |
+| Cream light | `#FFF5D2` | L1 top highlight |
+| Cream dark | `#C3AF7D` | L1 shadow / left face |
+| Gold body | `#FFC832` | L2 trailer main face |
+| Gold light | `#FFE678` | L2 highlight |
+| Gold dark | `#D29B14` | L2 shadow / left face |
+| Window blue | `#82C3E6` | Trailer windows |
+| Trim dark | `#3C2D14` | Trim, outlines |
+| Roof gray | `#8C8273` | Roof surface |
+| Awning red | `#C33C28` | L2 awning stripes |
+| Coin yellow | `#FFD700` | Currency icon |
 | UI tan | `#D4B896` | Panel backgrounds |
 | UI dark | `#3D2B1A` | Text, button borders |
-| Coin yellow | `#FFD700` | Currency icon |
-
-Art agents may extend this palette with 2–3 complementary accent colors, but must not stray into neon or high-saturation tones.
 
 ---
 
-## Grid
+## Sprite Dimensions
 
-The lot grid is **10 columns × 8 rows**, each cell **64×64 px** (world space).
-All lot sprites must fit within 64×64 px including any border/padding.
+| Asset | Canvas size | Notes |
+|---|---|---|
+| `lot_empty.png` | 128×96 | 128×64 top diamond + 32 px front face below |
+| `trailer_l1.png` | 128×160 | South-anchored; bottom of image = south vertex of tile |
+| `trailer_l2.png` | 128×160 | Same footprint as L1, gold body |
+| `icon_lock.png` | 32×32 | Padlock centered on transparent bg |
+| `bg_park.png` | 1280×720 | Full viewport grass field with fence/decor |
+| `icon_coin.png` | 24×24 | Unchanged from M4 |
+| `icon_account.png` | 32×32 | Unchanged from M4 |
+| `icon_quest.png` | 24×24 | Unchanged from M4 |
 
-Internal padding used by the current placeholder renderer: **5 px** on all sides,
-leaving a **54×54 px** interior for the trailer body. Match this footprint.
+---
+
+## Sprite Placement in Code
+
+LotGrid.gd draws trailers **south-anchored**:
+
+```gdscript
+# center = grid_to_screen(col, row)  ← center of the diamond
+# south vertex = center + (0, tile_height/2) = center + (0, 32)
+rect = Rect2(center.x - 64, center.y + 32 - sprite_h, 128, sprite_h)
+draw_texture_rect(tex, rect, false)
+```
+
+So a 128×160 trailer sprite: the bottom 32 px form the front face and skirt;
+the upper portion rises above the diamond.
 
 ---
 
 ## Visual States — Lot Cells
 
-Each lot is always in exactly one of these states. Art must be unambiguous at a glance.
+Each lot is always in exactly one state.
 
 ### 1. Empty Lot (unlocked, no trailer)
-- Bare dirt rectangle with faint grid lines
-- Subtle texture: cracked dry ground, maybe a tuft of dead grass in one corner
-- No structure present
+- Isometric diamond tile: bright grass top face, slightly darker front/left faces
+- Subtle texture: grass color variation, a few darker patches
+- `lot_empty.png` — 128×96 (extra 32 px for the front edge)
 
 ### 2. Empty Lot — Hover
-- Same as empty lot with a soft white glow / highlight rim (30% white overlay)
-- Indicates "click to place a trailer here"
+- Same tile + 30% white overlay drawn on the diamond polygon
+- No separate sprite needed — LotGrid draws `HOVER_COLOR` overlay in code
 
 ### 3. Invalid Placement Flash
-- Bright red tint (50% red overlay) — displayed for 0.3 seconds on failed placement
-- No additional art needed; this is an overlay applied in code
+- 50% red overlay on the diamond for 0.3 s — drawn in code only
 
 ### 4. Level 1 Trailer (occupied)
-- Single-wide mobile home, cream/beige body (`#F2E6C5`)
-- Dark brown trim/outline (`#665A3F`), 2 px border
-- Two small rectangular windows, blue (`#8DC8EB`), positioned upper-left and upper-right of body
-- Optional details: a small door, a skirt/skirting panel at the base, a tiny TV antenna
-- Weathered, a little worn — chipped paint is fine
+- Isometric single-wide mobile home
+- Cream body (`#F2E1AF`), lighter top face, darker left face
+- Roof: gray, slightly raised
+- Windows: 2× blue-glass rectangles with white glint and cross divider
+- Door: center with small awning above
+- Skirting panel at base
+- TV antenna on roof
+- Weathered look: subtle gradient shading
 
 ### 5. Level 1 Trailer — Upgrade Hover
-- Same as Level 1 but with a gold/yellow glow rim (35% gold overlay)
-- Indicates "click to upgrade"
-- No hover shown on maxed trailers
+- Gold 35% overlay on the diamond — drawn in code, no separate sprite
 
 ### 6. Level 2 Trailer (upgraded)
-- Same footprint as Level 1 but body color is warm gold (`#FFCC40`)
-- Slightly more polished look: cleaner lines, a small flower box under one window,
-  a new awning or carport shade over the door
-- Visually distinct from Level 1 at a glance — color is the primary signal
+- Same structure as L1 but gold body (`#FFC832`)
+- Red striped awning over door
+- Flower box under left window
+- White window trim (vs dark trim on L1)
+- Darker gold left face to emphasize depth
 
 ### 7. Locked Lot
-- Dark semi-transparent overlay (55% black) over the dirt background
-- A padlock icon centered in the cell — simple, 16×16 px
-- No trailer visible underneath
-
----
-
-## Sprites Needed (Priority Order)
-
-| Asset | Size | Notes |
-|---|---|---|
-| `lot_empty.png` | 64×64 | Dirt ground tile |
-| `trailer_l1.png` | 54×54 | Level 1 trailer body (placed inside 5 px padding) |
-| `trailer_l2.png` | 54×54 | Level 2 trailer body |
-| `icon_lock.png` | 24×24 | Padlock for locked lots |
-| `icon_coin.png` | 24×24 | Currency icon (shown next to currency label) |
-| `bg_park.png` | 640×512 | Park background (sits behind the grid) |
-| `icon_account.png` | 32×32 | Account/profile button icon |
-| `icon_quest.png` | 24×24 | Quest indicator icon |
+- `LOCKED_OVERLAY_COLOR` (55% black) polygon drawn over tile in code
+- `icon_lock.png` (32×32) centered on the diamond center
 
 ---
 
 ## Background (`bg_park.png`)
 
-640×512 px — fills the entire play area behind the lot grid.
+1280×720 px — fills the entire viewport behind the grid.
 
-- Flat dirt/scrubby grass ground
-- Chain-link fence or weathered wood fence along the perimeter
-- A few background elements outside the fence: a water tower, a distant highway,
-  maybe a single dead palm tree — low detail, muted colors so they don't compete
-  with the active grid
-- Sky: none (pure top-down); or a very subtle vignette if the style calls for it
+- Vertical green grass gradient (lighter top → darker bottom)
+- Grass texture patches (random lighter/darker rectangles)
+- Perimeter fence: weathered wood planks with darker posts every 48 px
+- Background details (muted, low-contrast so they don't compete with grid):
+  - Water tower — top-right corner
+  - Palm tree — top-left corner
+
+---
+
+## Draw Order (Painter's Algorithm)
+
+LotGrid draws in this order to achieve correct isometric depth:
+
+```
+for row in range(grid_rows):
+  for col in range(grid_cols):
+    draw ground tile (lot_empty texture)
+
+for row in range(grid_rows):
+  for col in range(grid_cols):
+    draw locked overlay  (if locked)
+    draw trailer sprite  (if occupied)
+    draw hover overlay   (if hovered)
+    draw flash overlay   (if flashing)
+```
+
+Front rows render on top of back rows — correct for isometric perspective.
 
 ---
 
 ## UI Elements
 
-The game UI overlays the game view. UI assets use a flat, slightly distressed style
-consistent with the lot art — no gradients, no gloss.
+Consistent with isometric cartoon style.
 
 ### Currency Label
 - Prefix with `icon_coin.png` (24×24)
-- Font: chunky pixel font (e.g., Press Start 2P or similar), white with 1 px dark drop shadow
-- Example: 🪙 1,250
-
-### Status Label
-- Small text below currency — shows placement feedback and sync status
-- Same font, smaller size, light gray
+- Bold chunky font, white with dark drop shadow
 
 ### Quest Label
-- Prefix with `icon_quest.png`
-- Shows current quest title and progress (e.g., "Place 3 trailers: 2/3")
+- Prefix with `icon_quest.png` (24×24)
 
 ### Account Button
-- Top-right corner
-- `icon_account.png` in a small rounded square button
-- Two states: anonymous (gray silhouette icon) and signed-in (colored silhouette)
+- `icon_account.png` in rounded square button, top-right corner
+- Anonymous: gray silhouette; Signed-in: colored silhouette
 
 ### Auth Screen (modal)
-- Centered panel, semi-transparent dark background behind it
-- Panel background: `#D4B896` (UI tan) with `#3D2B1A` border, 4 px rounded corners
-- Title: "Welcome to Trailer Park Empire" in pixel font
-- Buttons: flat rectangles, dark border, hover state is slightly lighter fill
-- No gradients, no drop shadows on buttons
-
----
-
-## Animation (Future — Milestone 5+)
-
-Do not animate sprites yet. Note these for later:
-
-- **Income tick**: coin icon floats up from trailer and fades (+10, +18)
-- **Placement**: trailer drops in with a brief squash-and-stretch
-- **Upgrade**: brief golden flash, then swap L1 → L2 sprite
-- **Quest complete**: banner slides in from top
+- Semi-transparent dark overlay behind panel
+- Panel: `#D4B896` fill, `#3D2B1A` border, 4 px rounded corners
+- Buttons: flat rectangles, dark border, no gradients
 
 ---
 
 ## Export Requirements
 
-- Format: PNG, transparent background (except `bg_park.png` and `lot_empty.png`)
-- Scale: 1× pixel art (do not pre-scale; Godot scales via `texture_filter = Nearest`)
-- Naming: snake_case, as listed in the Sprites table above
-- Destination: `game/assets/sprites/` (lots/trailers) and `game/assets/ui/` (icons/UI)
-- Color depth: 32-bit RGBA
+- Format: PNG, RGBA 32-bit
+- Transparent background (except `bg_park.png`)
+- No pre-scaling — Godot handles display scale
+- `texture_filter = Linear` (set in LotGrid._ready)
+- Destination: `game/assets/sprites/` (lots/trailers/bg) and `game/assets/ui/` (icons)
+
+---
+
+## Animation (Future — Milestone 5+)
+
+- Income tick: coin icon floats up from trailer, fades out
+- Placement: trailer drops in with squash-and-stretch
+- Upgrade: golden flash, L1 → L2 swap
+- Quest complete: banner slides in from top
