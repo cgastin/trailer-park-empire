@@ -36,7 +36,7 @@ func set_unlock_manager(mgr: Node) -> void:
 
 
 func _ready() -> void:
-	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_load_config()
 	_load_trailers_config()
 	_load_textures()
@@ -148,21 +148,74 @@ func _draw() -> void:
 
 
 func _draw_cell_ground(col: int, row: int) -> void:
+	var gp := Vector2i(col, row)
 	var c := grid_to_screen(col, row)
 	var hw := float(tile_width) / 2.0
 	var hh := float(tile_height) / 2.0
-	if _tex_lot_empty:
-		# Draw at actual texture size so the front face below the diamond is visible
-		var tex_h := float(_tex_lot_empty.get_height())
-		draw_texture_rect(_tex_lot_empty,
-			Rect2(c.x - hw, c.y - hh, tile_width, tex_h), false)
-	else:
-		draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
+
+	# Occupied cells: the trailer sprite includes its own grass tile — skip lot_empty
+	# to avoid a double-grass seam with mismatched colors.
+	if not GameState.is_lot_occupied(gp):
+		if _tex_lot_empty:
+			_draw_lot_tile(c, hw, hh)
+		else:
+			draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
+
 	# Grid outline on the diamond top face only
 	var diamond := _cell_diamond(col, row)
 	draw_polyline(
 		PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]),
 		GRID_COLOR, 1.0
+	)
+
+
+# Draw lot_empty clipped to the exact isometric tile shape using UV-mapped polygons.
+# This prevents any rectangular canvas bleed-through regardless of image quality.
+#
+# Texture layout (128×96):
+#   Top diamond:  north=(0.5,0)  east=(1,0.333)  south=(0.5,0.667)  west=(0,0.333)
+#   Front face:   top-center=(0.5,0.667)  top-right=(1,0.667)
+#                 bot-center=(0.5,1)      bot-left=(0,1)
+func _draw_lot_tile(c: Vector2, hw: float, hh: float) -> void:
+	var white := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
+
+	# Top diamond face
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(c.x,       c.y - hh),  # north
+			Vector2(c.x + hw,  c.y),        # east
+			Vector2(c.x,       c.y + hh),   # south
+			Vector2(c.x - hw,  c.y),        # west
+		]),
+		white,
+		PackedVector2Array([
+			Vector2(0.5,   0.0),    # north
+			Vector2(1.0,   0.333),  # east
+			Vector2(0.5,   0.667),  # south
+			Vector2(0.0,   0.333),  # west
+		]),
+		_tex_lot_empty
+	)
+
+	# Front face — parallelogram below south vertex
+	# Left triangle:  south, bot-left,   bot-center
+	# Right triangle: south, bot-center, top-right  (together = one convex quad)
+	var face_h := hh
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(c.x,       c.y + hh),             # top-center  (south vertex)
+			Vector2(c.x + hw,  c.y + hh),             # top-right
+			Vector2(c.x,       c.y + hh + face_h),    # bot-center
+			Vector2(c.x - hw,  c.y + hh + face_h),    # bot-left
+		]),
+		white,
+		PackedVector2Array([
+			Vector2(0.5,  0.667),  # top-center
+			Vector2(1.0,  0.667),  # top-right
+			Vector2(0.5,  1.0),    # bot-center
+			Vector2(0.0,  1.0),    # bot-left
+		]),
+		_tex_lot_empty
 	)
 
 
@@ -218,14 +271,39 @@ func _draw_trailer(col: int, row: int) -> void:
 
 # --- Input -------------------------------------------------------------------
 
+func _get_trailer_tex(col: int, row: int) -> Texture2D:
+	var lot := GameState.get_lot(Vector2i(col, row))
+	var level: int = lot.get("level", 1)
+	return _tex_trailer_l2 if level >= 2 else _tex_trailer_l1
+
+
+func _is_trailer_rect_hit(world_pos: Vector2, col: int, row: int) -> bool:
+	var tex := _get_trailer_tex(col, row)
+	if tex == null:
+		return false
+	var c := grid_to_screen(col, row)
+	var sprite_h := float(tex.get_height()) * (float(tile_width) / float(tex.get_width()))
+	var rect := Rect2(
+		c.x - float(tile_width) / 2.0,
+		c.y + float(tile_height) / 2.0 - sprite_h,
+		float(tile_width),
+		sprite_h
+	)
+	return rect.has_point(world_pos)
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_update_hover()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_local := get_local_mouse_position()
 		var grid_pos := world_to_grid(mouse_local)
-		if _is_in_grid(grid_pos) and _is_valid_hit(mouse_local, grid_pos.x, grid_pos.y):
-			lot_clicked.emit(grid_pos)
+		if _is_in_grid(grid_pos):
+			var occupied := GameState.is_lot_occupied(grid_pos)
+			var hit := _is_valid_hit(mouse_local, grid_pos.x, grid_pos.y) \
+					or (occupied and _is_trailer_rect_hit(mouse_local, grid_pos.x, grid_pos.y))
+			if hit:
+				lot_clicked.emit(grid_pos)
 
 
 func _update_hover() -> void:
