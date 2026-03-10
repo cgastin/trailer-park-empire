@@ -12,6 +12,9 @@ export_presets.cfg
 tfplan
 terraform/*
 
+# Godot 4 auto-generated script UID files
+*.gd.uid
+
 # OS
 .DS_Store
 Thumbs.db
