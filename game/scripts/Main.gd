@@ -153,7 +153,4 @@ func _on_account_button_pressed() -> void:
 
 
 func _load_background() -> void:
-	var img := Image.load_from_file("res://assets/sprites/bg_park.png")
-	if img == null:
-		return
-	park_background.texture = ImageTexture.create_from_image(img)
+	park_background.texture = load("res://assets/sprites/bg_park.png")

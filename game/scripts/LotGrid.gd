@@ -40,18 +40,10 @@ func _ready() -> void:
 
 
 func _load_textures() -> void:
-	_tex_lot_empty  = _load_png("res://assets/sprites/lot_empty.png")
-	_tex_trailer_l1 = _load_png("res://assets/sprites/trailer_l1.png")
-	_tex_trailer_l2 = _load_png("res://assets/sprites/trailer_l2.png")
-	_tex_lock       = _load_png("res://assets/sprites/icon_lock.png")
-
-
-func _load_png(path: String) -> ImageTexture:
-	var img := Image.load_from_file(path)
-	if img == null:
-		push_error("LotGrid: failed to load " + path)
-		return null
-	return ImageTexture.create_from_image(img)
+	_tex_lot_empty  = load("res://assets/sprites/lot_empty.png")
+	_tex_trailer_l1 = load("res://assets/sprites/trailer_l1.png")
+	_tex_trailer_l2 = load("res://assets/sprites/trailer_l2.png")
+	_tex_lock       = load("res://assets/sprites/icon_lock.png")
 
 
 func _load_trailers_config() -> void:
