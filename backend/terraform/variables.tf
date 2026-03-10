@@ -21,7 +21,7 @@ variable "org_id" {
 }
 
 variable "region" {
-  description = "Firestore region"
+  description = "Firestore location ID. Single-region: us-central1, us-east1, etc. Multi-region: nam5 (US), eur3 (EU)."
   type        = string
-  default     = "us-central"
+  default     = "us-central1"
 }
