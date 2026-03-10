@@ -187,188 +187,185 @@ def generate_lot_empty():
     print("Generated: lot_empty.png (128×96)")
 
 
-# ── 2. trailer_l1.png — 128×160 isometric Level 1 trailer ────────────────────
+# ── 2. trailer_l1.png — 128×96 isometric Level 1 trailer ─────────────────────
 def generate_trailer_l1():
-    W, H = 128, 160
+    # 128×96 — same canvas height as lot_empty so south-anchor math is consistent
+    # Bottom of image = south vertex of diamond (y=64 of tile = c.y+32 in LotGrid)
+    # The sprite rises 96px above that point.
+    W, H = 128, 96
     img = Image.new("RGBA", (W, H), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    # Layout (south-anchored — bottom of image = south vertex of diamond)
-    # Dimensions of the body on top face
-    body_top_y  = 20    # top of roof
-    body_bot_y  = 115   # bottom of body / top of front face
-    body_left   = 16    # left edge of top face
-    body_right  = 112   # right edge of top face
-    bw = body_right - body_left  # 96
+    # Body layout — compact to fit 96px canvas
+    roof_top    = 8     # top of roof strip
+    roof_bot    = 16    # bottom of roof / top of wall
+    wall_bot    = 68    # bottom of wall / top of skirting
+    skirt_bot   = 76    # bottom of skirting / top of front face
+    face_bot    = 90    # bottom of front face
+    body_left   = 18
+    body_right  = 110
 
-    # ── Roof (top face, cream-ish) ──
-    gradient_rect(draw, body_left, body_top_y, body_right, body_top_y + 12, ROOF_LT, ROOF_GRAY)
-    draw.rectangle([body_left, body_top_y, body_right, body_top_y + 12], outline=OUTLINE)
+    # ── Roof ──
+    gradient_rect(draw, body_left, roof_top, body_right, roof_bot, ROOF_LT, ROOF_GRAY)
+    draw.rectangle([body_left, roof_top, body_right, roof_bot], outline=OUTLINE)
 
     # Antenna
-    vline(draw, 88, body_top_y - 14, body_top_y, ANTENNA)
-    hline(draw, 83, 93, body_top_y - 12, ANTENNA)
-    hline(draw, 83, 93, body_top_y - 10, ANTENNA)
+    vline(draw, 86, roof_top - 8, roof_top, ANTENNA)
+    hline(draw, 82, 90, roof_top - 6, ANTENNA)
 
-    # ── Main wall — top face (front-facing, lighter) ──
-    gradient_rect(draw, body_left, body_top_y + 12, body_right, body_bot_y, CREAM_LT, CREAM)
+    # ── Main wall (cream) ──
+    gradient_rect(draw, body_left, roof_bot, body_right, wall_bot, CREAM_LT, CREAM)
 
     # Left window
-    wx1, wy1, wx2, wy2 = body_left + 6, body_top_y + 18, body_left + 30, body_top_y + 40
+    wx1, wy1, wx2, wy2 = body_left + 5, roof_bot + 4, body_left + 26, roof_bot + 26
     rect(draw, wx1 - 2, wy1 - 2, wx2 + 2, wy2 + 2, WINDOW_FRAME)
     gradient_rect(draw, wx1, wy1, wx2, wy2, WINDOW_BLUE, WINDOW_DK)
     vline(draw, (wx1 + wx2) // 2, wy1, wy2, WINDOW_FRAME)
     hline(draw, wx1, wx2, (wy1 + wy2) // 2, WINDOW_FRAME)
     px(draw, wx1 + 1, wy1 + 1, WHITE)
     px(draw, wx1 + 2, wy1 + 1, WHITE)
-    px(draw, wx1 + 1, wy1 + 2, WHITE)
 
     # Right window
-    wx1r, wx2r = body_right - 30, body_right - 6
+    wx1r, wx2r = body_right - 26, body_right - 5
     rect(draw, wx1r - 2, wy1 - 2, wx2r + 2, wy2 + 2, WINDOW_FRAME)
     gradient_rect(draw, wx1r, wy1, wx2r, wy2, WINDOW_BLUE, WINDOW_DK)
     vline(draw, (wx1r + wx2r) // 2, wy1, wy2, WINDOW_FRAME)
     hline(draw, wx1r, wx2r, (wy1 + wy2) // 2, WINDOW_FRAME)
     px(draw, wx1r + 1, wy1 + 1, WHITE)
-    px(draw, wx1r + 2, wy1 + 1, WHITE)
 
-    # Door
-    dx1, dx2 = 54, 74
-    dy1, dy2 = body_top_y + 55, body_bot_y
+    # Door (center, below windows)
+    dx1, dx2 = 55, 73
+    dy1, dy2 = roof_bot + 32, wall_bot
     rect(draw, dx1 - 2, dy1 - 2, dx2 + 2, dy2, TRIM)
     gradient_rect(draw, dx1, dy1, dx2, dy2, DOOR_LT, DOOR_BROWN)
     px(draw, dx2 - 3, (dy1 + dy2) // 2, COIN_YELLOW)
+    # Tiny awning
+    draw.polygon([(dx1 - 3, dy1 - 2), (dx2 + 3, dy1 - 2), (dx2 + 1, dy1 - 6), (dx1 - 1, dy1 - 6)], fill=TRIM)
 
-    # Small awning
-    draw.polygon([(dx1 - 4, dy1 - 2), (dx2 + 4, dy1 - 2), (dx2 + 2, dy1 - 8), (dx1 - 2, dy1 - 8)], fill=TRIM)
-
-    # Skirting at base
-    rect(draw, body_left, body_bot_y, body_right, body_bot_y + 8, SKIRTING)
-    for sx in range(body_left + 8, body_right, 12):
-        vline(draw, sx, body_bot_y, body_bot_y + 8, TRIM)
+    # Skirting
+    rect(draw, body_left, wall_bot, body_right, skirt_bot, SKIRTING)
+    for sx in range(body_left + 10, body_right, 12):
+        vline(draw, sx, wall_bot, skirt_bot, TRIM)
 
     # Body outline
-    draw.rectangle([body_left, body_top_y + 12, body_right, body_bot_y + 8], outline=OUTLINE)
+    draw.rectangle([body_left, roof_bot, body_right, skirt_bot], outline=OUTLINE)
 
-    # ── Left side face (darker, shadowed) ──
-    # Parallelogram: from (body_left, body_top_y+12) slanting left and down
-    side_depth = 20
+    # ── Left side face ──
+    side_depth = 16
     pts_left = [
-        (body_left,              body_top_y + 12),
-        (body_left - side_depth, body_top_y + 12 + side_depth // 2),
-        (body_left - side_depth, body_bot_y + 8  + side_depth // 2),
-        (body_left,              body_bot_y + 8),
+        (body_left,              roof_bot),
+        (body_left - side_depth, roof_bot + side_depth // 2),
+        (body_left - side_depth, skirt_bot + side_depth // 2),
+        (body_left,              skirt_bot),
     ]
     draw.polygon(pts_left, fill=WALL_LEFT)
     draw.polygon(pts_left, outline=OUTLINE)
 
     # ── Front base face ──
     pts_front = [
-        (body_left,              body_bot_y + 8),
-        (body_left - side_depth, body_bot_y + 8 + side_depth // 2),
-        (body_right - side_depth, body_bot_y + 8 + side_depth // 2),
-        (body_right,             body_bot_y + 8),
+        (body_left,               skirt_bot),
+        (body_left - side_depth,  skirt_bot + side_depth // 2),
+        (body_right - side_depth, skirt_bot + side_depth // 2),
+        (body_right,              skirt_bot),
     ]
     draw.polygon(pts_front, fill=WALL_FRONT)
     draw.polygon(pts_front, outline=OUTLINE)
 
     img.save(os.path.join(SPRITES_DIR, "trailer_l1.png"))
-    print("Generated: trailer_l1.png (128×160)")
+    print("Generated: trailer_l1.png (128×96)")
 
 
-# ── 3. trailer_l2.png — 128×160 isometric Level 2 trailer (gold) ─────────────
+# ── 3. trailer_l2.png — 128×96 isometric Level 2 trailer (gold) ──────────────
 def generate_trailer_l2():
-    W, H = 128, 160
+    W, H = 128, 96
     img = Image.new("RGBA", (W, H), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
-    body_top_y  = 20
-    body_bot_y  = 115
-    body_left   = 16
-    body_right  = 112
+    roof_top    = 8
+    roof_bot    = 16
+    wall_bot    = 68
+    skirt_bot   = 76
+    body_left   = 18
+    body_right  = 110
 
     # ── Roof ──
-    gradient_rect(draw, body_left, body_top_y, body_right, body_top_y + 12, ROOF_LT, ROOF_GRAY)
-    draw.rectangle([body_left, body_top_y, body_right, body_top_y + 12], outline=OUTLINE)
+    gradient_rect(draw, body_left, roof_top, body_right, roof_bot, ROOF_LT, ROOF_GRAY)
+    draw.rectangle([body_left, roof_top, body_right, roof_bot], outline=OUTLINE)
 
     # Antenna
-    vline(draw, 88, body_top_y - 14, body_top_y, ANTENNA)
-    hline(draw, 83, 93, body_top_y - 12, ANTENNA)
-    hline(draw, 83, 93, body_top_y - 10, ANTENNA)
+    vline(draw, 86, roof_top - 8, roof_top, ANTENNA)
+    hline(draw, 82, 90, roof_top - 6, ANTENNA)
 
-    # ── Main wall — gold ──
-    gradient_rect(draw, body_left, body_top_y + 12, body_right, body_bot_y, GOLD_LT, GOLD)
+    # ── Main wall (gold) ──
+    gradient_rect(draw, body_left, roof_bot, body_right, wall_bot, GOLD_LT, GOLD)
 
     # Left window (white trim)
-    wx1, wy1, wx2, wy2 = body_left + 6, body_top_y + 18, body_left + 30, body_top_y + 40
+    wx1, wy1, wx2, wy2 = body_left + 5, roof_bot + 4, body_left + 26, roof_bot + 26
     rect(draw, wx1 - 2, wy1 - 2, wx2 + 2, wy2 + 2, WHITE)
     gradient_rect(draw, wx1, wy1, wx2, wy2, WINDOW_BLUE, WINDOW_DK)
     vline(draw, (wx1 + wx2) // 2, wy1, wy2, WHITE)
     hline(draw, wx1, wx2, (wy1 + wy2) // 2, WHITE)
     px(draw, wx1 + 1, wy1 + 1, WHITE)
-    px(draw, wx1 + 2, wy1 + 1, WHITE)
 
-    # Flower box under left window
-    rect(draw, wx1 - 2, wy2 + 2, wx2 + 2, wy2 + 10, TRIM)
-    rect(draw, wx1 - 1, wy2 + 3, wx2 + 1, wy2 + 9, (90, 60, 30, 255))
-    for i, fc in enumerate([FLOWER_RED, FLOWER_PINK, FLOWER_RED, FLOWER_PINK, FLOWER_RED]):
+    # Flower box
+    rect(draw, wx1 - 2, wy2 + 2, wx2 + 2, wy2 + 8, TRIM)
+    rect(draw, wx1 - 1, wy2 + 3, wx2 + 1, wy2 + 7, (90, 60, 30, 255))
+    for i, fc in enumerate([FLOWER_RED, FLOWER_PINK, FLOWER_RED, FLOWER_PINK]):
         fx = wx1 + 2 + i * 4
         px(draw, fx, wy2 + 4, fc)
-        px(draw, fx, wy2 + 5, fc)
-        px(draw, fx, wy2 + 6, FLOWER_GREEN)
+        px(draw, fx, wy2 + 5, FLOWER_GREEN)
 
     # Right window
-    wx1r, wx2r = body_right - 30, body_right - 6
+    wx1r, wx2r = body_right - 26, body_right - 5
     rect(draw, wx1r - 2, wy1 - 2, wx2r + 2, wy2 + 2, WHITE)
     gradient_rect(draw, wx1r, wy1, wx2r, wy2, WINDOW_BLUE, WINDOW_DK)
     vline(draw, (wx1r + wx2r) // 2, wy1, wy2, WHITE)
     hline(draw, wx1r, wx2r, (wy1 + wy2) // 2, WHITE)
     px(draw, wx1r + 1, wy1 + 1, WHITE)
-    px(draw, wx1r + 2, wy1 + 1, WHITE)
 
     # Door
-    dx1, dx2 = 54, 74
-    dy1, dy2 = body_top_y + 55, body_bot_y
+    dx1, dx2 = 55, 73
+    dy1, dy2 = roof_bot + 32, wall_bot
     rect(draw, dx1 - 2, dy1 - 2, dx2 + 2, dy2, TRIM)
     gradient_rect(draw, dx1, dy1, dx2, dy2, (195, 170, 90, 255), DOOR_BROWN)
     px(draw, dx2 - 3, (dy1 + dy2) // 2, COIN_YELLOW)
 
     # Red striped awning
-    draw.polygon([(dx1 - 6, dy1 - 2), (dx2 + 6, dy1 - 2), (dx2 + 3, dy1 - 10), (dx1 - 3, dy1 - 10)], fill=AWNING_RED)
-    for sx in range(dx1 - 4, dx2 + 6, 4):
-        vline(draw, sx, dy1 - 10, dy1 - 2, AWNING_DK)
-    draw.polygon([(dx1 - 6, dy1 - 2), (dx2 + 6, dy1 - 2), (dx2 + 3, dy1 - 10), (dx1 - 3, dy1 - 10)], outline=OUTLINE)
+    draw.polygon([(dx1 - 5, dy1 - 2), (dx2 + 5, dy1 - 2), (dx2 + 2, dy1 - 8), (dx1 - 2, dy1 - 8)], fill=AWNING_RED)
+    for sx in range(dx1 - 3, dx2 + 5, 4):
+        vline(draw, sx, dy1 - 8, dy1 - 2, AWNING_DK)
+    draw.polygon([(dx1 - 5, dy1 - 2), (dx2 + 5, dy1 - 2), (dx2 + 2, dy1 - 8), (dx1 - 2, dy1 - 8)], outline=OUTLINE)
 
     # Skirting
-    rect(draw, body_left, body_bot_y, body_right, body_bot_y + 8, (140, 115, 58, 255))
-    for sx in range(body_left + 8, body_right, 10):
-        vline(draw, sx, body_bot_y, body_bot_y + 8, TRIM)
+    rect(draw, body_left, wall_bot, body_right, skirt_bot, (140, 115, 58, 255))
+    for sx in range(body_left + 10, body_right, 12):
+        vline(draw, sx, wall_bot, skirt_bot, TRIM)
 
-    draw.rectangle([body_left, body_top_y + 12, body_right, body_bot_y + 8], outline=OUTLINE)
+    draw.rectangle([body_left, roof_bot, body_right, skirt_bot], outline=OUTLINE)
 
     # Left face
-    side_depth = 20
+    side_depth = 16
     pts_left = [
-        (body_left,              body_top_y + 12),
-        (body_left - side_depth, body_top_y + 12 + side_depth // 2),
-        (body_left - side_depth, body_bot_y + 8  + side_depth // 2),
-        (body_left,              body_bot_y + 8),
+        (body_left,              roof_bot),
+        (body_left - side_depth, roof_bot + side_depth // 2),
+        (body_left - side_depth, skirt_bot + side_depth // 2),
+        (body_left,              skirt_bot),
     ]
     draw.polygon(pts_left, fill=GOLD_LEFT)
     draw.polygon(pts_left, outline=OUTLINE)
 
     # Front base face
     pts_front = [
-        (body_left,              body_bot_y + 8),
-        (body_left - side_depth, body_bot_y + 8 + side_depth // 2),
-        (body_right - side_depth, body_bot_y + 8 + side_depth // 2),
-        (body_right,             body_bot_y + 8),
+        (body_left,               skirt_bot),
+        (body_left - side_depth,  skirt_bot + side_depth // 2),
+        (body_right - side_depth, skirt_bot + side_depth // 2),
+        (body_right,              skirt_bot),
     ]
     draw.polygon(pts_front, fill=GOLD_FRONT)
     draw.polygon(pts_front, outline=OUTLINE)
 
     img.save(os.path.join(SPRITES_DIR, "trailer_l2.png"))
-    print("Generated: trailer_l2.png (128×160)")
+    print("Generated: trailer_l2.png (128×96)")
 
 
 # ── 4. icon_lock.png — 32×32 padlock ─────────────────────────────────────────

@@ -148,17 +148,18 @@ func _draw() -> void:
 
 
 func _draw_cell_ground(col: int, row: int) -> void:
-	var diamond := _cell_diamond(col, row)
+	var c := grid_to_screen(col, row)
+	var hw := float(tile_width) / 2.0
+	var hh := float(tile_height) / 2.0
 	if _tex_lot_empty:
-		# Draw textured diamond using the tile texture fitted to the diamond bounding rect
-		var c := grid_to_screen(col, row)
-		var hw := float(tile_width) / 2.0
-		var hh := float(tile_height) / 2.0
+		# Draw at actual texture size so the front face below the diamond is visible
+		var tex_h := float(_tex_lot_empty.get_height())
 		draw_texture_rect(_tex_lot_empty,
-			Rect2(c.x - hw, c.y - hh, tile_width, tile_height), false)
+			Rect2(c.x - hw, c.y - hh, tile_width, tex_h), false)
 	else:
-		draw_colored_polygon(diamond, Color(0.6, 0.5, 0.35, 1.0))
-	# Grid outline
+		draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
+	# Grid outline on the diamond top face only
+	var diamond := _cell_diamond(col, row)
 	draw_polyline(
 		PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]),
 		GRID_COLOR, 1.0
