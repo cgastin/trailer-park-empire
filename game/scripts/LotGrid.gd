@@ -149,19 +149,22 @@ func _draw() -> void:
 
 func _draw_cell_ground(col: int, row: int) -> void:
 	var gp := Vector2i(col, row)
-	var c := grid_to_screen(col, row)
-	var hw := float(tile_width) / 2.0
-	var hh := float(tile_height) / 2.0
+	var c   := grid_to_screen(col, row)
+	var hw  := float(tile_width) / 2.0
+	var hh  := float(tile_height) / 2.0
 
-	# Occupied cells: the trailer sprite includes its own grass tile — skip lot_empty
-	# to avoid a double-grass seam with mismatched colors.
-	if not GameState.is_lot_occupied(gp):
+	if GameState.is_lot_occupied(gp):
+		# Trailer sprite provides its own grass diamond.
+		# Only draw the soil front face so the trailer is visually grounded.
+		if _tex_lot_empty:
+			_draw_lot_front_face_only(c, hw, hh)
+	else:
 		if _tex_lot_empty:
 			_draw_lot_tile(c, hw, hh)
 		else:
 			draw_colored_polygon(_cell_diamond(col, row), Color(0.55, 0.72, 0.35, 1.0))
 
-	# Grid outline on the diamond top face only
+	# Grid outline
 	var diamond := _cell_diamond(col, row)
 	draw_polyline(
 		PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]),
@@ -214,6 +217,27 @@ func _draw_lot_tile(c: Vector2, hw: float, hh: float) -> void:
 			Vector2(1.0,  0.667),  # top-right
 			Vector2(0.5,  1.0),    # bot-center
 			Vector2(0.0,  1.0),    # bot-left
+		]),
+		_tex_lot_empty
+	)
+
+
+func _draw_lot_front_face_only(c: Vector2, hw: float, hh: float) -> void:
+	var white := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
+	var face_h := hh
+	draw_polygon(
+		PackedVector2Array([
+			Vector2(c.x,       c.y + hh),
+			Vector2(c.x + hw,  c.y + hh),
+			Vector2(c.x,       c.y + hh + face_h),
+			Vector2(c.x - hw,  c.y + hh + face_h),
+		]),
+		white,
+		PackedVector2Array([
+			Vector2(0.5,  0.667),
+			Vector2(1.0,  0.667),
+			Vector2(0.5,  1.0),
+			Vector2(0.0,  1.0),
 		]),
 		_tex_lot_empty
 	)
